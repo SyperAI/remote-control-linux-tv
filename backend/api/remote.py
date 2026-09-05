@@ -49,7 +49,6 @@ async def go_home():
 @router.post("/input")
 async def remote_input(key_data: KeyModel):
     try:
-        # Non-blocking async execution to eliminate network/CPU lag
         await asyncio.create_subprocess_exec("xdotool", "key", key_data.key)
         return {"status": "success"}
     except Exception as e:
@@ -97,6 +96,10 @@ async def get_audio_outputs():
     try:
         result = subprocess.run(["pactl", "list", "sinks"], capture_output=True, text=True)
         sinks = []
+        
+        # Add the dynamic multi-output option at the top
+        sinks.append({"id": "special_combine_audio", "name": "🎧 Play on ALL Headphones (Combine)"})
+        
         current_name = None
         for line in result.stdout.split("\n"):
             line = line.strip()
@@ -104,10 +107,12 @@ async def get_audio_outputs():
                 current_name = line.replace("Name:", "").strip()
             elif line.startswith("Description:") and current_name:
                 desc = line.replace("Description:", "").strip()
-                sinks.append({"id": current_name, "name": desc})
+                # Hide the internal synthetic sink so the menu looks clean
+                if current_name != "combined_audio":
+                    sinks.append({"id": current_name, "name": desc})
                 current_name = None
         
-        if sinks:
+        if len(sinks) > 1:
             return {"status": "success", "outputs": sinks}
         return {"status": "success", "outputs": [{"id": "fallback", "name": "No devices found"}]}
     except Exception:
@@ -116,7 +121,23 @@ async def get_audio_outputs():
 @router.post("/audio_outputs")
 async def set_audio_output(sink_data: AudioSinkModel):
     try:
-        await asyncio.create_subprocess_exec("pactl", "set-default-sink", sink_data.sink_name)
+        # First, unload any existing combine modules to prevent duplicates/errors
+        subprocess.run(["pactl", "unload-module", "module-combine-sink"], capture_output=True)
+        
+        if sink_data.sink_name == "special_combine_audio":
+            # Load the combine module
+            subprocess.run([
+                "pactl", "load-module", "module-combine-sink",
+                "sink_name=combined_audio",
+                "sink_properties=device.description=Combined_All_Headphones"
+            ], capture_output=True)
+            
+            # Set the combined sink as default
+            await asyncio.create_subprocess_exec("pactl", "set-default-sink", "combined_audio")
+        else:
+            # Standard single sink assignment
+            await asyncio.create_subprocess_exec("pactl", "set-default-sink", sink_data.sink_name)
+            
         return {"status": "success", "message": "Audio output changed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -151,7 +172,6 @@ async def list_bluetooth():
 @router.post("/bluetooth/connect")
 async def bt_connect(data: BluetoothMacModel):
     try:
-        # Launching shell with timeout or just native wait
         p = await asyncio.create_subprocess_exec("bluetoothctl", "connect", data.mac)
         await p.wait()
         return {"status": "success"}

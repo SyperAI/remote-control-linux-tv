@@ -39,8 +39,8 @@ function startHold(actionFn, arg) {
         holdInterval = setInterval(() => {
             vibrate();
             actionFn(arg);
-        }, 60); // Low latency spam rate (down from 150)
-    }, 300); // Trigger slightly faster
+        }, 60); 
+    }, 300); 
 }
 
 function stopHold() {
@@ -73,14 +73,13 @@ document.addEventListener("DOMContentLoaded", () => {
         
         liveInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Stop mobile keyboard default
+                e.preventDefault(); 
                 sendInput('Return');
                 liveInput.value = "";
                 oldText = "";
             }
         });
         
-        // Ensure weird keyboard behavior doesn't mismatch our cache
         liveInput.addEventListener('blur', () => {
             liveInput.value = "";
             oldText = "";
@@ -149,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         
         function sendAccumulatedMouse() {
-            if (pendingDx === 0 && Math.abs(pendingDy) < 1) return; // allow minor fuzzing ignorance
+            if (pendingDx === 0 && Math.abs(pendingDy) < 1) return;
             isSendingMouse = true;
             
             const toSendX = pendingDx; const toSendY = pendingDy;
@@ -161,7 +160,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({ dx: toSendX, dy: toSendY })
             }).catch(e=>console.error(e));
             
-            // ~30 FPS throttle
             setTimeout(() => {
                 isSendingMouse = false;
                 if (pendingDx !== 0 || pendingDy !== 0) sendAccumulatedMouse();
@@ -189,7 +187,7 @@ async function loadBluetoothDevices() {
     list.innerHTML = `<div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Scanning...</div>`;
     
     try {
-        const res = await fetch('/api/bluetooth');
+        const res = await fetch('/api/remote/bluetooth');
         const data = await res.json();
         
         if (data.status !== 'success' || !data.devices || data.devices.length === 0) {
@@ -223,19 +221,18 @@ async function loadBluetoothDevices() {
 
 async function connectBT(mac) {
     vibrate();
-    loadBluetoothDevices(); // Show loading again...
+    loadBluetoothDevices();
     
-    // Quick custom toast for BT
     const list = document.getElementById('bt-devices-list');
     list.innerHTML = `<div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Connecting to ${mac}...</div>`;
     
-    await fetch('/api/bluetooth/connect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
-    setTimeout(loadBluetoothDevices, 1500); // reload to see state
+    await fetch('/api/remote/bluetooth/connect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
+    setTimeout(loadBluetoothDevices, 1500); 
 }
 
 async function disconnectBT(mac) {
     vibrate();
-    await fetch('/api/bluetooth/disconnect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
+    await fetch('/api/remote/bluetooth/disconnect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
     setTimeout(loadBluetoothDevices, 1000);
 }
 
