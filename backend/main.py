@@ -64,11 +64,11 @@ async def launch_app(app_id: str):
     APPS_CONFIG = {
         "youtube": {
             "name": "YouTube",
-            "command": ["chromium-browser", "--user-data-dir=/tmp/tv_youtube", "--no-first-run", "--kiosk", "https://www.youtube.com/tv"]
+            "command": ["chromium", "--user-data-dir=/tmp/tv_youtube", "--no-first-run", "--kiosk", "https://www.youtube.com/tv"]
         },
         "website": {
             "name": "Браузер",
-            "command": ["chromium-browser", "--user-data-dir=/tmp/tv_website", "--no-first-run", "--kiosk", settings.get("website_url")]
+            "command": ["chromium", "--user-data-dir=/tmp/tv_website", "--no-first-run", "--kiosk", settings.get("website_url")]
         },
         "moonlight": {
             "name": "Moonlight",
