@@ -1,0 +1,86 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(circle at center, #1a1b26 0%, #0d0d14 100%);
+    color: #ffffff;
+    margin: 0;
+    overflow: hidden;
+    user-select: none;
+}
+
+.tv-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 4rem 5rem;
+    box-sizing: border-box;
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+.app-card {
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    position: relative;
+}
+
+.app-card:hover, .app-card:focus, .app-card.focused {
+    transform: scale(1.05) translateY(-10px);
+    box-shadow: 0 30px 60px -10px rgba(0,0,0,0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    outline: none;
+    z-index: 10;
+}
+
+.app-card.focused {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.6), 0 30px 60px -10px rgba(0,0,0,0.8);
+    border-color: rgba(59, 130, 246, 0.8);
+}
+
+.glow-moonlight:hover, .glow-moonlight.focused { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4); }
+.glow-youtube:hover, .glow-youtube.focused { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); }
+.glow-web:hover, .glow-web.focused { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.8), 0 0 60px rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.4); }
+
+.header-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+}
+.header-btn:hover, .header-btn:focus, .header-btn.focused {
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+/* Settings Modal */
+#settings-modal {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(15px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+#settings-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+input {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+    transition: border-color 0.2s;
+}
+input:focus {
+    border-color: #3b82f6;
+}
+
+.time-text { font-size: 5rem; font-weight: 300; line-height: 1; }
+.date-text { font-size: 1.5rem; font-weight: 400; color: #9ca3af; margin-top: 0.5rem; }
