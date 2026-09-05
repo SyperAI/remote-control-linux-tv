@@ -32,7 +32,10 @@ async def kill_active():
 @router.post("/home")
 async def go_home():
     try:
-        subprocess.run(["xdotool", "windowminimize", "$(xdotool getactivewindow)"], shell=True)
+        # BUGFIX: Используем строку, так как xdotool с вложенным $() требует реального shell 
+        # Если полноэкранное окно (kiosk) сопротивляется минимизации, 'alt+tab' работает как запасной план
+        cmd = "xdotool windowminimize $(xdotool getactivewindow) || xdotool key alt+Tab"
+        subprocess.run(cmd, shell=True)
         return {"status": "success", "message": "Переход домой"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

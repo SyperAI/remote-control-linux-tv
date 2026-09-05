@@ -20,9 +20,8 @@ function setMode(mode) {
     }
 }
 
-// Keyboard/D-Pad Input
+// Action sending logic
 async function sendInput(key) {
-    vibrate();
     try {
         await fetch('/api/remote/input', {
             method: 'POST',
@@ -32,8 +31,90 @@ async function sendInput(key) {
     } catch(e) {}
 }
 
-// Mouse / Trackpad Input
+async function sendVolume(action) {
+    try {
+        await fetch('/api/remote/volume', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action })
+        });
+    } catch(e) {}
+}
+
+// Progressive Hold Logic
+let holdInterval = null;
+let holdTimeout = null;
+
+function startHold(actionFn, arg) {
+    vibrate();
+    actionFn(arg); // Initial press
+    holdTimeout = setTimeout(() => {
+        holdInterval = setInterval(() => {
+            vibrate();
+            actionFn(arg);
+        }, 150);
+    }, 450);
+}
+
+function stopHold() {
+    clearTimeout(holdTimeout);
+    clearInterval(holdInterval);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    // 1. Setup D-Pad buttons
+    const repeatKeys = ['Up', 'Down', 'Left', 'Right'];
+    document.querySelectorAll('[data-key]').forEach(btn => {
+        const key = btn.getAttribute('data-key');
+        const isRepeat = repeatKeys.includes(key);
+        
+        const press = (e) => {
+            if(e.cancelable) e.preventDefault();
+            if (isRepeat) {
+                startHold(sendInput, key);
+            } else {
+                vibrate();
+                sendInput(key);
+            }
+        };
+        
+        btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('mousedown', (e) => { if (e.button === 0) press(e); });
+        
+        if (isRepeat) {
+            ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => {
+                btn.addEventListener(evt, stopHold);
+            });
+        }
+    });
+
+    // 2. Setup Volume buttons
+    const repeatVols = ['up', 'down'];
+    document.querySelectorAll('[data-vol]').forEach(btn => {
+        const action = btn.getAttribute('data-vol');
+        const isRepeat = repeatVols.includes(action);
+        
+        const press = (e) => {
+            if(e.cancelable) e.preventDefault();
+            if (isRepeat) {
+                startHold(sendVolume, action);
+            } else {
+                vibrate();
+                sendVolume(action);
+            }
+        };
+        
+        btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('mousedown', (e) => { if (e.button === 0) press(e); });
+        
+        if (isRepeat) {
+            ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => {
+                btn.addEventListener(evt, stopHold);
+            });
+        }
+    });
+
+    // 3. Setup Trackpad
     const tp = document.getElementById('trackpad');
     if (tp) {
         let lastX = 0, lastY = 0;
@@ -67,15 +148,12 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     }
+
+    // 4. Load initial audio config
+    loadAudioOutputs();
 });
 
-// Volume Controls
-async function sendVolume(action) {
-    vibrate();
-    fetch('/api/remote/volume', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action }) });
-}
-
-// App Controls
+// System Actions
 async function killActive() {
     vibrate();
     if(confirm('Точно закрыть запущенное приложение?')) {
@@ -84,7 +162,7 @@ async function killActive() {
 }
 function goHome() { vibrate(); fetch('/api/remote/home', { method: 'POST' }); }
 
-// Settings Logic directly in Remote
+// Settings Logic
 let currentLinks = [];
 
 function toggleSettings() {
@@ -102,6 +180,7 @@ async function fetchRemoteSettings() {
     try {
         const res = await fetch('/api/settings');
         const data = await res.json();
+        document.getElementById('input-wallpaper').value = data.wallpaper_url || '';
         document.getElementById('input-host').value = data.moonlight_host || '';
         currentLinks = data.custom_links || [];
         renderLinks();
@@ -154,7 +233,8 @@ async function saveSettings(event) {
     await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
+            wallpaper_url: document.getElementById('input-wallpaper').value,
             moonlight_host: document.getElementById('input-host').value,
             custom_links: currentLinks
         })
@@ -184,7 +264,3 @@ async function setAudioOutput(sink_name) {
     vibrate();
     fetch('/api/remote/audio_outputs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sink_name }) });
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-    loadAudioOutputs();
-});

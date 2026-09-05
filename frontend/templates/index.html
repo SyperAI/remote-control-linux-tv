@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart TV Dashboard</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/css/tv.css">
 </head>
 <body>
+    
+    <!-- Background layer for custom wallpapers (images/videos) -->
+    <div id="dynamic-bg"></div>
+
     <div class="tv-container">
         <!-- Header -->
         <header class="flex justify-between items-start mb-16">
@@ -23,25 +25,25 @@
             <div class="flex items-center gap-6">
                 <i class="fa-solid fa-wifi text-xl text-gray-400"></i>
                 <div class="glass-panel px-4 py-2 text-sm flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    Система готова
+                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span class="font-medium text-white/90">Система готова</span>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
         <main class="flex-1 flex flex-col justify-center relative">
-            <h2 class="text-3xl font-semibold mb-8 text-white/80">Приложения</h2>
+            <h2 class="text-4xl font-semibold mb-10 text-white drop-shadow-lg">Приложения</h2>
             
             <!-- Dynamic Grid (populated by static/js/tv.js) -->
-            <div id="apps-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+            <div id="apps-grid" class="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-7xl">
                 <!-- Data will be loaded here from JSON -->
             </div>
         </main>
         
         <!-- Toast Status -->
         <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 glass-panel px-8 py-4 opacity-0 transition-opacity duration-300 pointer-events-none z-50">
-            <span id="toast-message" class="text-lg font-medium"></span>
+            <span id="toast-message" class="text-lg font-medium shadow-sm"></span>
         </div>
     </div>
 

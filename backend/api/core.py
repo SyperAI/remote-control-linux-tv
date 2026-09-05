@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 active_processes = {}
-# Project root settings.json
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "settings.json")
 
 class CustomLink(BaseModel):
@@ -20,6 +19,7 @@ class CustomLink(BaseModel):
     url: str
 
 class SettingsModel(BaseModel):
+    wallpaper_url: str = ""
     moonlight_host: str
     custom_links: List[CustomLink]
 
@@ -27,11 +27,15 @@ def get_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "wallpaper_url" not in data:
+                    data["wallpaper_url"] = ""
+                return data
         except Exception as e:
             logger.error(f"Error reading settings: {e}")
             
     return {
+        "wallpaper_url": "",
         "moonlight_host": "192.168.1.10",
         "custom_links": [
             {"id": "link_google", "name": "Google", "url": "https://google.com"}

@@ -33,9 +33,9 @@
 
         <!-- Volume Controls -->
         <div class="flex justify-between px-6 mb-2 mt-2 gap-3">
-            <button onclick="sendVolume('down')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-low"></i></button>
-            <button onclick="sendVolume('mute')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-xmark"></i></button>
-            <button onclick="sendVolume('up')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-high"></i></button>
+            <button data-vol="down" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-low"></i></button>
+            <button data-vol="mute" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-xmark"></i></button>
+            <button data-vol="up" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-high"></i></button>
         </div>
         
         <!-- Mode Switcher -->
@@ -47,11 +47,11 @@
         <!-- D-PAD Area -->
         <div id="area-dpad" class="flex flex-col items-center justify-center my-2 flex-1">
             <div class="dpad">
-                <button onclick="sendInput('Up')" class="dpad-btn dpad-up"><i class="fa-solid fa-chevron-up"></i></button>
-                <button onclick="sendInput('Left')" class="dpad-btn dpad-left"><i class="fa-solid fa-chevron-left"></i></button>
-                <button onclick="sendInput('Return')" class="dpad-btn dpad-ok">OK</button>
-                <button onclick="sendInput('Right')" class="dpad-btn dpad-right"><i class="fa-solid fa-chevron-right"></i></button>
-                <button onclick="sendInput('Down')" class="dpad-btn dpad-down"><i class="fa-solid fa-chevron-down"></i></button>
+                <button data-key="Up" class="dpad-btn dpad-up"><i class="fa-solid fa-chevron-up"></i></button>
+                <button data-key="Left" class="dpad-btn dpad-left"><i class="fa-solid fa-chevron-left"></i></button>
+                <button data-key="Return" class="dpad-btn dpad-ok">OK</button>
+                <button data-key="Right" class="dpad-btn dpad-right"><i class="fa-solid fa-chevron-right"></i></button>
+                <button data-key="Down" class="dpad-btn dpad-down"><i class="fa-solid fa-chevron-down"></i></button>
             </div>
         </div>
 
@@ -84,9 +84,15 @@
             </div>
             
             <div class="space-y-6 overflow-y-auto flex-1">
-                <div class="bg-[#1e293b] p-4 rounded-xl">
-                    <label class="block text-slate-400 mb-2 text-sm font-medium">IP-адрес ПК для Moonlight</label>
-                    <input type="text" id="input-host" class="w-full p-3 rounded-lg text-base border-none bg-slate-800" placeholder="192.168.1.X">
+                <div class="bg-[#1e293b] p-4 rounded-xl space-y-4">
+                    <div>
+                        <label class="block text-slate-400 mb-2 text-sm font-medium">Обои дашборда (URL картинки или .mp4)</label>
+                        <input type="text" id="input-wallpaper" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="https://.../bg.gif">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-2 text-sm font-medium">IP-адрес ПК для Moonlight</label>
+                        <input type="text" id="input-host" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.X">
+                    </div>
                 </div>
                 
                 <div>
@@ -105,14 +111,13 @@
             </div>
             
             <div class="mt-4 pt-4 border-t border-slate-700">
-                <button onclick="saveSettings(event)" class="bg-blue-600 w-full py-4 rounded-xl font-semibold text-lg text-white">
+                <button onclick="saveSettings(event)" class="bg-blue-600 w-full py-4 rounded-xl font-semibold text-lg text-white shadow-lg">
                     Сохранить настройки
                 </button>
             </div>
         </div>
     </div>
     
-    <!-- Custom Logic -->
     <script src="/static/js/remote.js"></script>
 </body>
 </html>
