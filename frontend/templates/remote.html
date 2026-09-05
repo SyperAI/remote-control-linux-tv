@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ТВ Пульт</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/remote.css">
+</head>
+<body>
+
+    <div class="remote-container">
+        
+        <!-- Header Controls -->
+        <div class="mb-4 px-4 flex gap-3">
+            <div class="flex-1 relative">
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">Аудио Выход</label>
+                <select id="audio-outputs" onchange="setAudioOutput(this.value)" class="w-full p-3 rounded-xl text-sm shadow-inner cursor-pointer appearance-none">
+                    <option>Загрузка...</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-[65%] transform -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+            <div class="flex items-end">
+                <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-slate-300" title="Настройки ТВ">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Volume Controls -->
+        <div class="flex justify-between px-6 mb-2 mt-2 gap-3">
+            <button onclick="sendVolume('down')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-low"></i></button>
+            <button onclick="sendVolume('mute')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-xmark"></i></button>
+            <button onclick="sendVolume('up')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-high"></i></button>
+        </div>
+        
+        <!-- Mode Switcher -->
+        <div class="px-6 mt-4 flex bg-[#1e293b] p-1 rounded-xl">
+            <button onclick="setMode('dpad')" id="btn-mode-dpad" class="flex-1 py-2 rounded-lg bg-[#334155] text-white text-sm font-semibold transition-all">Крестовина (ТВ)</button>
+            <button onclick="setMode('mouse')" id="btn-mode-mouse" class="flex-1 py-2 rounded-lg text-slate-400 text-sm font-semibold transition-all">Трекпад (Сайты)</button>
+        </div>
+
+        <!-- D-PAD Area -->
+        <div id="area-dpad" class="flex flex-col items-center justify-center my-2 flex-1">
+            <div class="dpad">
+                <button onclick="sendInput('Up')" class="dpad-btn dpad-up"><i class="fa-solid fa-chevron-up"></i></button>
+                <button onclick="sendInput('Left')" class="dpad-btn dpad-left"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="sendInput('Return')" class="dpad-btn dpad-ok">OK</button>
+                <button onclick="sendInput('Right')" class="dpad-btn dpad-right"><i class="fa-solid fa-chevron-right"></i></button>
+                <button onclick="sendInput('Down')" class="dpad-btn dpad-down"><i class="fa-solid fa-chevron-down"></i></button>
+            </div>
+        </div>
+
+        <!-- Mouse Area -->
+        <div id="area-mouse" class="flex flex-col items-center justify-center my-2 flex-1 section-hidden px-6">
+            <div id="trackpad" class="mousepad">
+                <i class="fa-regular fa-hand-pointer text-3xl mb-2"></i>
+                <span class="text-xs">Водите пальцем, тапайте для клика</span>
+            </div>
+        </div>
+
+        <!-- System Controls -->
+        <div class="grid grid-cols-2 gap-4 px-4 mt-auto pb-4">
+            <button onclick="goHome()" class="btn-action btn-blue flex flex-col gap-2">
+                <i class="fa-solid fa-house mb-1"></i>
+                <span class="text-xs font-medium text-center">На дашборд<br/>(Свернуть)</span>
+            </button>
+            
+            <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-2">
+                <i class="fa-solid fa-power-off mb-1"></i>
+                <span class="text-xs font-medium text-center">Закрыть<br/>приложение</span>
+            </button>
+        </div>
+
+        <!-- Settings Built into Remote -->
+        <div id="settings-layer">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Настройки ТВ</h2>
+                <button onclick="toggleSettings()" class="text-2xl text-slate-400 p-2"><i class="fa-solid fa-times"></i></button>
+            </div>
+            
+            <div class="space-y-6 overflow-y-auto flex-1">
+                <div class="bg-[#1e293b] p-4 rounded-xl">
+                    <label class="block text-slate-400 mb-2 text-sm font-medium">IP-адрес ПК для Moonlight</label>
+                    <input type="text" id="input-host" class="w-full p-3 rounded-lg text-base border-none bg-slate-800" placeholder="192.168.1.X">
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-2">Вкладки Браузера</h3>
+                    <div id="custom-links-container" class="space-y-3 mb-4">
+                        <!-- Links List dynamically populated -->
+                    </div>
+                    
+                    <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                        <h4 class="text-sm font-semibold mb-3">Добавить новую вкладку</h4>
+                        <input type="text" id="new-link-name" placeholder="Название (например, Google)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
+                        <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
+                        <button onclick="addLink()" class="w-full py-3 bg-slate-700 rounded-lg font-semibold text-sm">Добавить</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-700">
+                <button onclick="saveSettings(event)" class="bg-blue-600 w-full py-4 rounded-xl font-semibold text-lg text-white">
+                    Сохранить настройки
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Logic -->
+    <script src="/static/js/remote.js"></script>
+</body>
+</html>

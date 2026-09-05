@@ -1,0 +1,117 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    margin: 0;
+    overflow-y: auto;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.remote-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 1rem 0.5rem;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    position: relative;
+}
+
+.section-hidden { display: none !important; }
+
+/* D-Pad Styling */
+.dpad {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 1.5rem auto;
+    background: #1e293b;
+    border-radius: 50%;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 10px 25px rgba(0,0,0,0.5);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+}
+
+.dpad-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #94a3b8;
+    transition: all 0.1s;
+}
+
+.dpad-btn:active { color: #38bdf8; background: rgba(255,255,255,0.05); }
+
+.dpad-up { grid-column: 2; grid-row: 1; border-radius: 50px 50px 0 0; }
+.dpad-left { grid-column: 1; grid-row: 2; border-radius: 50px 0 0 50px; }
+.dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 50px 50px 0; }
+.dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 50px 50px; }
+.dpad-ok {
+    grid-column: 2; grid-row: 2;
+    background: #334155;
+    border-radius: 50%;
+    margin: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    color: #fff;
+    font-weight: 600;
+}
+.dpad-ok:active { background: #38bdf8; }
+
+/* Mouse Pad Styling */
+.mousepad {
+    width: 100%;
+    height: 250px;
+    background: rgba(255,255,255,0.02);
+    border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    margin: 1rem 0;
+    touch-action: none;
+}
+
+/* Action Buttons */
+.btn-action {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    transition: background 0.1s;
+}
+.btn-action:active { background: #334155; transform: translateY(2px); }
+
+.btn-red { color: #ef4444; }
+.btn-blue { color: #38bdf8; }
+
+select, input {
+    background: #1e293b;
+    color: #fff;
+    border: 1px solid #334155;
+    outline: none;
+}
+select { -webkit-appearance: none; }
+
+/* Setting overlay inside remote */
+#settings-layer {
+    position: absolute;
+    inset: 0;
+    background: #0f172a;
+    z-index: 50;
+    padding: 1.5rem;
+    display: none;
+    flex-direction: column;
+}

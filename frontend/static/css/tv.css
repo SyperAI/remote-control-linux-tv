@@ -47,40 +47,5 @@ body {
 .glow-youtube:hover, .glow-youtube.focused { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); }
 .glow-web:hover, .glow-web.focused { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.8), 0 0 60px rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.4); }
 
-.header-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.2s;
-}
-.header-btn:hover, .header-btn:focus, .header-btn.focused {
-    background: rgba(255, 255, 255, 0.2);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
-}
-
-/* Settings Modal */
-#settings-modal {
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(15px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-#settings-modal.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-input {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    outline: none;
-    transition: border-color 0.2s;
-}
-input:focus {
-    border-color: #3b82f6;
-}
-
 .time-text { font-size: 5rem; font-weight: 300; line-height: 1; }
 .date-text { font-size: 1.5rem; font-weight: 400; color: #9ca3af; margin-top: 0.5rem; }
