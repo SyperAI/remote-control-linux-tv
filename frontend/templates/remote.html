@@ -24,18 +24,14 @@
                 </select>
                 <i class="fa-solid fa-chevron-down absolute right-3 top-[65%] transform -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
             </div>
-            <div class="flex items-end">
+            <div class="flex items-end gap-2">
+                <button onclick="toggleBluetooth()" class="btn-action !p-3 !px-4 text-blue-400" title="Bluetooth">
+                    <i class="fa-brands fa-bluetooth-b"></i>
+                </button>
                 <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-slate-300" title="TV Settings">
                     <i class="fa-solid fa-gear"></i>
                 </button>
             </div>
-        </div>
-        
-        <!-- Keyboard Input -->
-        <div class="px-5 mb-2 mt-2 flex gap-2">
-            <input type="text" id="keyboard-input" class="flex-1 p-3 rounded-xl bg-[#1e293b] border border-slate-700 text-white text-sm outline-none focus:border-blue-500" placeholder="Type text on TV...">
-            <button onclick="sendText()" class="btn-action !p-3 !px-4 text-blue-400"><i class="fa-solid fa-paper-plane"></i></button>
-            <button onclick="sendInput('BackSpace')" class="btn-action !p-3 !px-4 text-slate-400"><i class="fa-solid fa-delete-left"></i></button>
         </div>
 
         <!-- Volume Controls -->
@@ -63,10 +59,11 @@
         </div>
 
         <!-- Mouse Area -->
-        <div id="area-mouse" class="flex flex-col items-center justify-center my-2 flex-1 section-hidden px-5">
-            <div id="trackpad" class="mousepad">
+        <div id="area-mouse" class="flex flex-col items-center justify-center my-2 flex-1 section-hidden px-5 w-full">
+            <input type="text" id="live-text" class="w-full mb-3 p-3 rounded-xl bg-slate-800 text-white text-sm outline-none border border-slate-700 focus:border-blue-500 shadow-inner" placeholder="Type here on TV (Live)...">
+            <div id="trackpad" class="mousepad w-full">
                 <i class="fa-regular fa-hand-pointer text-3xl mb-2 text-slate-500"></i>
-                <span class="text-xs text-slate-400 font-medium">Swipe to move, tap to click</span>
+                <span class="text-xs text-slate-400 font-medium tracking-wide">Swipe to move, tap to click</span>
             </div>
         </div>
 
@@ -83,7 +80,21 @@
             </button>
         </div>
 
-        <!-- Settings Built into Remote -->
+        <!-- Bluetooth Overlay -->
+        <div id="bt-layer" style="display:none; position:absolute; inset:0; background:#0f172a; z-index:50; padding:1.5rem; flex-direction:column;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white"><i class="fa-brands fa-bluetooth text-blue-500 mr-2"></i> Bluetooth</h2>
+                <button onclick="toggleBluetooth()" class="text-2xl text-slate-400 p-2"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="text-slate-400 text-sm mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                Ensure device is in pairing mode or already paired with the OS to connect.
+            </div>
+            <div id="bt-devices-list" class="space-y-3 overflow-y-auto flex-1 pb-10">
+                <div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Scanning...</div>
+            </div>
+        </div>
+
+        <!-- Settings Overlay -->
         <div id="settings-layer">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold">TV Settings</h2>
@@ -107,7 +118,7 @@
                 <div>
                     <h3 class="text-lg font-bold mb-2">Browser Tabs</h3>
                     <div id="custom-links-container" class="space-y-3 mb-4">
-                        <!-- Links List dynamically populated -->
+                        <!-- Links dynamically populated -->
                     </div>
                     
                     <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">

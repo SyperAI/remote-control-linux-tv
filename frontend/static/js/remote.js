@@ -20,58 +20,18 @@ function setMode(mode) {
     }
 }
 
-// Action sending logic
-async function sendInput(key) {
-    try {
-        await fetch('/api/remote/input', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ key })
-        });
-    } catch(e) {}
+// Low latency fire and forget
+function sendInput(key) {
+    fetch('/api/remote/input', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key }) }).catch(e=>console.error(e));
 }
 
-async function sendVolume(action) {
-    try {
-        await fetch('/api/remote/volume', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ action })
-        });
-    } catch(e) {}
+function sendVolume(action) {
+    fetch('/api/remote/volume', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action }) }).catch(e=>console.error(e));
 }
 
-async function sendText() {
-    const inp = document.getElementById('keyboard-input');
-    const text = inp.value;
-    if (!text) return;
-    vibrate();
-    
-    try {
-        await fetch('/api/remote/type', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ text })
-        });
-        inp.value = '';
-    } catch(e) {}
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const textInput = document.getElementById('keyboard-input');
-    if (textInput) {
-        textInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                sendText();
-            }
-        });
-    }
-});
-
+// Progressive Hold Logic
 let holdInterval = null;
 let holdTimeout = null;
-
 function startHold(actionFn, arg) {
     vibrate();
     actionFn(arg);
@@ -79,8 +39,8 @@ function startHold(actionFn, arg) {
         holdInterval = setInterval(() => {
             vibrate();
             actionFn(arg);
-        }, 150);
-    }, 450);
+        }, 60); // Low latency spam rate (down from 150)
+    }, 300); // Trigger slightly faster
 }
 
 function stopHold() {
@@ -89,6 +49,45 @@ function stopHold() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    
+    // LIVE TEXT INPUT (DELTA SYNC)
+    let oldText = "";
+    const liveInput = document.getElementById('live-text');
+    if (liveInput) {
+        liveInput.addEventListener('input', () => {
+            const newText = liveInput.value;
+            let i = 0;
+            while(i < oldText.length && i < newText.length && oldText[i] === newText[i]) i++;
+            const deleted = oldText.length - i;
+            const added = newText.slice(i);
+            
+            if (deleted > 0) {
+                // Send backspaces
+                for(let k=0; k<deleted; k++) sendInput('BackSpace');
+            }
+            if (added.length > 0) {
+                fetch('/api/remote/type', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text: added }) });
+            }
+            oldText = newText;
+        });
+        
+        liveInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Stop mobile keyboard default
+                sendInput('Return');
+                liveInput.value = "";
+                oldText = "";
+            }
+        });
+        
+        // Ensure weird keyboard behavior doesn't mismatch our cache
+        liveInput.addEventListener('blur', () => {
+            liveInput.value = "";
+            oldText = "";
+        });
+    }
+
+
     const repeatKeys = ['Up', 'Down', 'Left', 'Right'];
     document.querySelectorAll('[data-key]').forEach(btn => {
         const key = btn.getAttribute('data-key');
@@ -96,22 +95,13 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const press = (e) => {
             if(e.cancelable) e.preventDefault();
-            if (isRepeat) {
-                startHold(sendInput, key);
-            } else {
-                vibrate();
-                sendInput(key);
-            }
+            if (isRepeat) startHold(sendInput, key);
+            else { vibrate(); sendInput(key); }
         };
         
         btn.addEventListener('touchstart', press, {passive: false});
         btn.addEventListener('mousedown', (e) => { if (e.button === 0) press(e); });
-        
-        if (isRepeat) {
-            ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => {
-                btn.addEventListener(evt, stopHold);
-            });
-        }
+        if (isRepeat) ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => btn.addEventListener(evt, stopHold));
     });
 
     const repeatVols = ['up', 'down'];
@@ -121,60 +111,134 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const press = (e) => {
             if(e.cancelable) e.preventDefault();
-            if (isRepeat) {
-                startHold(sendVolume, action);
-            } else {
-                vibrate();
-                sendVolume(action);
-            }
+            if (isRepeat) startHold(sendVolume, action);
+            else { vibrate(); sendVolume(action); }
         };
         
         btn.addEventListener('touchstart', press, {passive: false});
         btn.addEventListener('mousedown', (e) => { if (e.button === 0) press(e); });
-        
-        if (isRepeat) {
-            ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => {
-                btn.addEventListener(evt, stopHold);
-            });
-        }
+        if (isRepeat) ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => btn.addEventListener(evt, stopHold));
     });
 
+    // BATCHED TRACKPAD (FIXED LAG)
     const tp = document.getElementById('trackpad');
     if (tp) {
         let lastX = 0, lastY = 0;
+        let pendingDx = 0, pendingDy = 0;
+        let isSendingMouse = false;
         
         tp.addEventListener('touchstart', e => {
             lastX = e.touches[0].clientX;
             lastY = e.touches[0].clientY;
-        });
+        }, {passive: true});
         
         tp.addEventListener('touchmove', e => {
-            e.preventDefault();
+            if(e.cancelable) e.preventDefault();
             const touch = e.touches[0];
-            const dx = (touch.clientX - lastX) * 1.5; 
-            const dy = (touch.clientY - lastY) * 1.5;
+            pendingDx += (touch.clientX - lastX) * 1.5; 
+            pendingDy += (touch.clientY - lastY) * 1.5;
             lastX = touch.clientX;
             lastY = touch.clientY;
             
-            fetch('/api/remote/mouse', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ dx, dy })
-            });
+            if(!isSendingMouse) sendAccumulatedMouse();
         }, {passive: false});
 
         tp.addEventListener('click', () => {
             vibrate();
+            fetch('/api/remote/mouse', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ click: "left" }) });
+        });
+        
+        function sendAccumulatedMouse() {
+            if (pendingDx === 0 && Math.abs(pendingDy) < 1) return; // allow minor fuzzing ignorance
+            isSendingMouse = true;
+            
+            const toSendX = pendingDx; const toSendY = pendingDy;
+            pendingDx = 0; pendingDy = 0;
+            
             fetch('/api/remote/mouse', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ click: "left" })
-            });
-        });
+                body: JSON.stringify({ dx: toSendX, dy: toSendY })
+            }).catch(e=>console.error(e));
+            
+            // ~30 FPS throttle
+            setTimeout(() => {
+                isSendingMouse = false;
+                if (pendingDx !== 0 || pendingDy !== 0) sendAccumulatedMouse();
+            }, 30);
+        }
     }
 
     loadAudioOutputs();
 });
+
+// Bluetooth
+function toggleBluetooth() {
+    vibrate();
+    const layer = document.getElementById('bt-layer');
+    if (layer.style.display === 'flex') {
+        layer.style.display = 'none';
+    } else {
+        layer.style.display = 'flex';
+        loadBluetoothDevices();
+    }
+}
+
+async function loadBluetoothDevices() {
+    const list = document.getElementById('bt-devices-list');
+    list.innerHTML = `<div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Scanning...</div>`;
+    
+    try {
+        const res = await fetch('/api/bluetooth');
+        const data = await res.json();
+        
+        if (data.status !== 'success' || !data.devices || data.devices.length === 0) {
+            list.innerHTML = `<div class="text-center text-slate-500 mt-5">No devices found</div>`;
+            return;
+        }
+        
+        list.innerHTML = '';
+        data.devices.forEach(d => {
+            const btnColor = d.connected ? 'bg-red-500/20 text-red-500' : 'bg-blue-600 hover:bg-blue-500 text-white';
+            const btnText = d.connected ? 'Disconnect' : 'Connect';
+            const action = d.connected ? `disconnectBT('${d.mac}')` : `connectBT('${d.mac}')`;
+            const icon = d.connected ? `<i class="fa-brands fa-bluetooth text-blue-400 mr-2"></i>` : `<i class="fa-solid fa-headphones text-slate-500 mr-2"></i>`;
+            
+            list.innerHTML += `
+                <div class="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-slate-700">
+                    <div class="flex-1 overflow-hidden">
+                        <div class="font-bold text-sm truncate text-white">${icon} ${d.name}</div>
+                        <div class="text-xs text-slate-400 font-mono">${d.mac}</div>
+                    </div>
+                    <button onclick="${action}" class="px-3 py-2 ${btnColor} rounded-lg text-xs font-semibold ml-3 shadow-md focus:outline-none focus:ring transition">
+                        ${btnText}
+                    </button>
+                </div>
+            `;
+        });
+    } catch(e) {
+         list.innerHTML = `<div class="text-center text-red-500 mt-5 bg-red-900/20 p-3 rounded-xl">${e.message || "Failed to load"}</div>`;
+    }
+}
+
+async function connectBT(mac) {
+    vibrate();
+    loadBluetoothDevices(); // Show loading again...
+    
+    // Quick custom toast for BT
+    const list = document.getElementById('bt-devices-list');
+    list.innerHTML = `<div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Connecting to ${mac}...</div>`;
+    
+    await fetch('/api/bluetooth/connect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
+    setTimeout(loadBluetoothDevices, 1500); // reload to see state
+}
+
+async function disconnectBT(mac) {
+    vibrate();
+    await fetch('/api/bluetooth/disconnect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ mac }) });
+    setTimeout(loadBluetoothDevices, 1000);
+}
+
 
 async function killActive() {
     vibrate();
@@ -185,7 +249,6 @@ async function killActive() {
 function goHome() { vibrate(); fetch('/api/remote/home', { method: 'POST' }); }
 
 let currentLinks = [];
-
 function toggleSettings() {
     vibrate();
     const layer = document.getElementById('settings-layer');
@@ -241,9 +304,7 @@ function addLink() {
     
     const id = 'link_' + Date.now();
     currentLinks.push({ id, name, url });
-    
-    nameNode.value = '';
-    urlNode.value = '';
+    nameNode.value = ''; urlNode.value = '';
     renderLinks();
 }
 
@@ -261,16 +322,13 @@ async function saveSettings(event) {
             const file = fileInput.files[0];
             const ext = file.name.split('.').pop() || 'tmp';
             const buffer = await file.arrayBuffer();
-            
             const upRes = await fetch('/api/upload_wallpaper', {
                 method: 'POST',
                 headers: {'X-File-Ext': ext},
                 body: buffer
             });
             const upData = await upRes.json();
-            if (upData.url) {
-                wallpaperUrl = upData.url;
-            }
+            if (upData.url) wallpaperUrl = upData.url;
         } catch (e) {
             alert('File upload error!');
         }
@@ -295,7 +353,6 @@ async function loadAudioOutputs() {
         const data = await res.json();
         const select = document.getElementById('audio-outputs');
         select.innerHTML = '';
-        
         data.outputs.forEach(device => {
             const opt = document.createElement('option');
             opt.value = device.id;
