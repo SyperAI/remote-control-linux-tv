@@ -14,8 +14,8 @@
             background: #0f172a;
             color: #f8fafc;
             margin: 0;
-            overflow: hidden; /* Prevent bouncing on iOS */
-            touch-action: manipulation;
+            overflow-y: auto; /* Позволяем скролл для маленьких экранов */
+            touch-action: manipulation; /* Предотвращает зум двойным тапом */
             user-select: none;
             -webkit-user-select: none;
         }
@@ -23,10 +23,10 @@
         .remote-container {
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
             max-width: 450px;
             margin: 0 auto;
-            padding: 1rem;
+            padding: 1rem 0.5rem;
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
@@ -34,9 +34,9 @@
         /* D-Pad Styling */
         .dpad {
             position: relative;
-            width: 250px;
-            height: 250px;
-            margin: 2rem auto;
+            width: 220px; /* Уменьшен размер от скрытия края */
+            height: 220px;
+            margin: 1.5rem auto;
             background: #1e293b;
             border-radius: 50%;
             box-shadow: 
@@ -70,7 +70,7 @@
             grid-column: 2; grid-row: 2;
             background: #334155;
             border-radius: 50%;
-            margin: 10px;
+            margin: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             color: #fff;
             font-weight: 600;
@@ -81,8 +81,8 @@
         .btn-action {
             background: #1e293b;
             border: 1px solid #334155;
-            border-radius: 16px;
-            padding: 1.2rem;
+            border-radius: 12px;
+            padding: 1rem;
             font-size: 1.25rem;
             display: flex;
             align-items: center;
@@ -106,28 +106,33 @@
 </head>
 <body>
 
-    <div class="remote-container pt-8 pb-6">
+    <div class="remote-container">
         
-        <!-- Header / Audio Selector -->
-        <div class="mb-6 px-4">
-            <label class="block text-xs uppercase tracking-wider text-slate-400 mb-2 font-semibold">Аудио Выход</label>
-            <div class="relative">
-                <select id="audio-outputs" onchange="setAudioOutput(this.value)" class="w-full p-4 rounded-xl text-sm shadow-inner cursor-pointer appearance-none">
+        <!-- Header / Audio Selector & Settings -->
+        <div class="mb-4 px-4 flex gap-3">
+            <div class="flex-1 relative">
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">Аудио Выход</label>
+                <select id="audio-outputs" onchange="setAudioOutput(this.value)" class="w-full p-3 rounded-xl text-sm shadow-inner cursor-pointer appearance-none">
                     <option>Загрузка...</option>
                 </select>
-                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-[65%] transform -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+            </div>
+            <div class="flex items-end">
+                <button onclick="openTVSettings()" class="btn-action !p-3 !px-4 hover:border-slate-400 text-slate-300" title="Настройки ТВ">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
             </div>
         </div>
 
         <!-- Volume Controls -->
-        <div class="flex justify-between px-8 mb-6 mt-4 gap-4">
-            <button onclick="sendVolume('down')" class="btn-action flex-1"><i class="fa-solid fa-volume-low"></i></button>
-            <button onclick="sendVolume('mute')" class="btn-action flex-1"><i class="fa-solid fa-volume-xmark"></i></button>
-            <button onclick="sendVolume('up')" class="btn-action flex-1"><i class="fa-solid fa-volume-high"></i></button>
+        <div class="flex justify-between px-6 mb-2 mt-2 gap-3">
+            <button onclick="sendVolume('down')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-low"></i></button>
+            <button onclick="sendVolume('mute')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-xmark"></i></button>
+            <button onclick="sendVolume('up')" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-high"></i></button>
         </div>
 
         <!-- D-PAD -->
-        <div class="flex-1 flex items-center justify-center">
+        <div class="flex flex-col items-center justify-center my-2">
             <div class="dpad">
                 <button onclick="sendInput('Up')" class="dpad-btn dpad-up"><i class="fa-solid fa-chevron-up"></i></button>
                 <button onclick="sendInput('Left')" class="dpad-btn dpad-left"><i class="fa-solid fa-chevron-left"></i></button>
@@ -138,29 +143,26 @@
         </div>
 
         <!-- System Controls -->
-        <div class="grid grid-cols-2 gap-6 px-6 mt-6 pb-4">
+        <div class="grid grid-cols-2 gap-4 px-4 mt-auto pb-4">
             <button onclick="goHome()" class="btn-action btn-blue flex flex-col gap-2">
                 <i class="fa-solid fa-house mb-1"></i>
-                <span class="text-xs font-medium">Главная / Свернуть</span>
+                <span class="text-xs font-medium text-center">Главное меню<br/>(Свернуть)</span>
             </button>
             
             <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-2">
                 <i class="fa-solid fa-power-off mb-1"></i>
-                <span class="text-xs font-medium">Закрыть приложение</span>
+                <span class="text-xs font-medium text-center">Закрыть<br/>приложение</span>
             </button>
         </div>
 
-        <!-- Haptic Feedback Helper -->
         <script>
-            // Haptic feedback function for mobile
             function vibrate() {
                 if (navigator.vibrate) navigator.vibrate(20);
             }
 
-            // Input / Navigation
             async function sendInput(key) {
                 vibrate();
-                const map = { "Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "Return": "Return" };
+                const map = { "Up": "Up", "Down": "Down", "Left": "Left", "Right": "Right", "Return": "Return", "S": "s" };
                 const xdo_key = map[key];
                 
                 try {
@@ -169,10 +171,15 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ key: xdo_key })
                     });
-                } catch(e) { console.error('Ошибка отправки', e); }
+                } catch(e) {}
             }
 
-            // Volume
+            // Открыть/закрыть настройки на ТВ с помощью симуляции клавиши 's'
+            function openTVSettings() {
+                vibrate();
+                sendInput('S');
+            }
+
             async function sendVolume(action) {
                 vibrate();
                 try {
@@ -181,28 +188,24 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ action })
                     });
-                } catch(e) { console.error('Ошибка громкости', e); }
+                } catch(e) {}
             }
 
-            // Kill Current Task
             async function killActive() {
                 vibrate();
-                if(confirm('Закрыть активные приложения и вернуться на главный экран?')) {
+                if(confirm('Точно закрыть запущенное приложение?')) {
                     try {
                         const res = await fetch('/api/remote/kill_active', { method: 'POST' });
                         const data = await res.json();
-                        alert(data.message);
                     } catch(e) { alert('Ошибка сети'); }
                 }
             }
 
-            // Go to home (Minimize)
             async function goHome() {
                 vibrate();
                 fetch('/api/remote/home', { method: 'POST' });
             }
 
-            // Audio Outputs
             async function loadAudioOutputs() {
                 try {
                     const res = await fetch('/api/remote/audio_outputs');
@@ -213,7 +216,7 @@
                     data.outputs.forEach(device => {
                         const opt = document.createElement('option');
                         opt.value = device.id;
-                        opt.textContent = device.name;
+                        opt.textContent = device.name; // Теперь здесь красивое название
                         select.appendChild(opt);
                     });
                 } catch(e) {
@@ -229,10 +232,9 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ sink_name })
                     });
-                } catch(e) { console.error(e); }
+                } catch(e) {}
             }
 
-            // Load on start
             loadAudioOutputs();
         </script>
     </div>

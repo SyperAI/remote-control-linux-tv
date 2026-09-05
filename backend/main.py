@@ -59,14 +59,16 @@ def write_settings(settings: SettingsModel):
 async def launch_app(app_id: str):
     settings = get_settings()
     
+    # Chromium gives much better control over process isolation (--user-data-dir)
+    # ensuring it doesn't merge tabs with an already running instance.
     APPS_CONFIG = {
         "youtube": {
             "name": "YouTube",
-            "command": ["firefox", "--kiosk", "https://www.youtube.com/tv"]
+            "command": ["chromium-browser", "--user-data-dir=/tmp/tv_youtube", "--no-first-run", "--kiosk", "https://www.youtube.com/tv"]
         },
         "website": {
             "name": "Браузер",
-            "command": ["firefox", "--kiosk", settings.get("website_url")]
+            "command": ["chromium-browser", "--user-data-dir=/tmp/tv_website", "--no-first-run", "--kiosk", settings.get("website_url")]
         },
         "moonlight": {
             "name": "Moonlight",
@@ -141,8 +143,6 @@ async def kill_active():
 async def go_home():
     """Переходит в меню (сворачивает приложения на Linux)."""
     try:
-        # Используем xdotool (X11) для минимизации активного окна
-        # Для Wayland/GNOME можно использовать `ydotool` или dbus
         subprocess.run(["xdotool", "windowminimize", "$(xdotool getactivewindow)"], shell=True)
         return {"status": "success", "message": "Переход домой"}
     except Exception as e:
@@ -151,7 +151,6 @@ async def go_home():
 @app.post("/api/remote/input")
 async def remote_input(key_data: KeyModel):
     """Отправляет нажатия клавиш с пульта D-Pad."""
-    # Транслируем ключи в формат xdotool (Left, Right, Up, Down, Return)
     try:
         subprocess.run(["xdotool", "key", key_data.key])
         return {"status": "success"}
@@ -178,21 +177,27 @@ async def control_volume(vol_data: VolumeModel):
 
 @app.get("/api/remote/audio_outputs")
 async def get_audio_outputs():
-    """Получает список аудио-устройств (с Linux pc)."""
+    """Получает красивый список аудио-устройств (с Linux pc)."""
     try:
-        result = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True)
+        result = subprocess.run(["pactl", "list", "sinks"], capture_output=True, text=True)
         sinks = []
-        for line in result.stdout.strip().split("\n"):
-            if not line: continue
-            parts = line.split()
-            if len(parts) >= 2:
-                idx = parts[0]
-                name = parts[1]
-                sinks.append({"id": name, "name": name})
-        return {"status": "success", "outputs": sinks}
+        current_name = None
+        for line in result.stdout.split("\n"):
+            line = line.strip()
+            if line.startswith("Name:"):
+                current_name = line.replace("Name:", "").strip()
+            elif line.startswith("Description:") and current_name:
+                desc = line.replace("Description:", "").strip()
+                sinks.append({"id": current_name, "name": desc})
+                current_name = None
+        
+        if sinks:
+            return {"status": "success", "outputs": sinks}
+        else:
+            return {"status": "success", "outputs": [{"id": "fallback", "name": "Устройства не найдены"}]}
     except Exception:
         # Эмуляция для Windows / если нет pactl
-        return {"status": "success", "outputs": [{"id": "dummy1", "name": "TV AudioOut (HDMI)"}, {"id": "dummy2", "name": "Headphones"}]}
+        return {"status": "success", "outputs": [{"id": "dummy1", "name": "TV AudioOut (HDMI)"}, {"id": "dummy2", "name": "Режим эмуляции"}]}
 
 @app.post("/api/remote/audio_outputs")
 async def set_audio_output(sink_data: AudioSinkModel):

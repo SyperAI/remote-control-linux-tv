@@ -94,7 +94,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.addEventListener('keydown', (e) => {
-        if (document.getElementById('settings-modal').classList.contains('active')) return;
+        const isSettingsOpen = document.getElementById('settings-modal').classList.contains('active');
+        
+        // Toggle settings with 'S' key 
+        if (e.key.toLowerCase() === 's') {
+            if (isSettingsOpen) closeSettings();
+            else openSettings();
+            return;
+        }
+
+        if (isSettingsOpen) {
+            // Allow Exit via Escape or Return (if they want to just close, though we have Save btn)
+            if (e.key === 'Escape') closeSettings();
+            return; // Отключить навигацию по меню при открытых настройках
+        }
 
         if (e.key === 'ArrowRight') {
             currentIndex = (currentIndex + 1) % navItems.length;
