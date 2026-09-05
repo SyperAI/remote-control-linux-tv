@@ -2,8 +2,9 @@ import os
 import json
 import subprocess
 import asyncio
+import time
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import logging
 
@@ -11,7 +12,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 active_processes = {}
-SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "settings.json")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+SETTINGS_FILE = os.path.join(PROJECT_ROOT, "settings.json")
+STATIC_DIR = os.path.join(PROJECT_ROOT, "frontend", "static")
 
 class CustomLink(BaseModel):
     id: str
@@ -52,9 +55,30 @@ def write_settings(settings: SettingsModel):
         data = json.loads(settings.model_dump_json() if hasattr(settings, 'model_dump_json') else settings.json())
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
-        return {"status": "success", "message": "Настройки сохранены"}
+        return {"status": "success", "message": "Settings saved"}
     except Exception as e:
-        logger.error(f"Ошибка сохранения настроек: {e}")
+        logger.error(f"Error saving settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/upload_wallpaper")
+async def upload_wallpaper(request: Request):
+    try:
+        ext = request.headers.get("X-File-Ext", "jpg")
+        ext = ''.join(c for c in ext if c.isalnum())
+        if not ext:
+            ext = "jpg"
+            
+        filename = f"bg_{int(time.time())}.{ext}"
+        os.makedirs(STATIC_DIR, exist_ok=True)
+        filepath = os.path.join(STATIC_DIR, filename)
+        
+        body = await request.body()
+        with open(filepath, "wb") as f:
+            f.write(body)
+            
+        return {"status": "success", "url": f"/static/{filename}"}
+    except Exception as e:
+        logger.error(f"Error uploading wallpaper: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/launch/{app_id}")
@@ -79,10 +103,10 @@ async def launch_app(app_id: str):
         }
 
     if app_id not in APPS_CONFIG:
-        raise HTTPException(status_code=404, detail="Приложение не найдено")
+        raise HTTPException(status_code=404, detail="Application not found")
     
     if app_id in active_processes and active_processes[app_id].poll() is None:
-        return {"status": "success", "message": f"{APPS_CONFIG[app_id]['name']} уже работает."}
+        return {"status": "success", "message": f"{APPS_CONFIG[app_id]['name']} is already running."}
 
     config = APPS_CONFIG[app_id]
     
@@ -94,7 +118,7 @@ async def launch_app(app_id: str):
             stderr=subprocess.DEVNULL
         )
         active_processes[app_id] = process
-        return {"status": "success", "message": f"{config['name']} запущено"}
+        return {"status": "success", "message": f"{config['name']} launched"}
     except FileNotFoundError:
         return {"status": "success", "warning": f"Command not found (emulation): {' '.join(config['command'])}"}
     except Exception as e:
@@ -104,7 +128,7 @@ async def launch_app(app_id: str):
 async def kill_app(app_id: str):
     process = active_processes.get(app_id)
     if not process or process.poll() is not None:
-        return {"status": "success", "message": "Процесс не найден."}
+        return {"status": "success", "message": "Process not found."}
         
     try:
         process.terminate()
@@ -117,6 +141,6 @@ async def kill_app(app_id: str):
             process.kill()
             
         del active_processes[app_id]
-        return {"status": "success", "message": "Приложение закрыто."}
+        return {"status": "success", "message": "Application closed."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

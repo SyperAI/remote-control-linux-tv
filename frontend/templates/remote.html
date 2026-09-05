@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ТВ Пульт</title>
+    <title>TV Remote</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,34 +18,41 @@
         <!-- Header Controls -->
         <div class="mb-4 px-4 flex gap-3">
             <div class="flex-1 relative">
-                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">Аудио Выход</label>
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">Audio Output</label>
                 <select id="audio-outputs" onchange="setAudioOutput(this.value)" class="w-full p-3 rounded-xl text-sm shadow-inner cursor-pointer appearance-none">
-                    <option>Загрузка...</option>
+                    <option>Loading...</option>
                 </select>
                 <i class="fa-solid fa-chevron-down absolute right-3 top-[65%] transform -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
             </div>
             <div class="flex items-end">
-                <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-slate-300" title="Настройки ТВ">
+                <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-slate-300" title="TV Settings">
                     <i class="fa-solid fa-gear"></i>
                 </button>
             </div>
         </div>
+        
+        <!-- Keyboard Input -->
+        <div class="px-5 mb-2 mt-2 flex gap-2">
+            <input type="text" id="keyboard-input" class="flex-1 p-3 rounded-xl bg-[#1e293b] border border-slate-700 text-white text-sm outline-none focus:border-blue-500" placeholder="Type text on TV...">
+            <button onclick="sendText()" class="btn-action !p-3 !px-4 text-blue-400"><i class="fa-solid fa-paper-plane"></i></button>
+            <button onclick="sendInput('BackSpace')" class="btn-action !p-3 !px-4 text-slate-400"><i class="fa-solid fa-delete-left"></i></button>
+        </div>
 
         <!-- Volume Controls -->
-        <div class="flex justify-between px-6 mb-2 mt-2 gap-3">
+        <div class="flex justify-between px-5 mb-2 mt-2 gap-3">
             <button data-vol="down" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-low"></i></button>
             <button data-vol="mute" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-xmark"></i></button>
             <button data-vol="up" class="btn-action flex-1 py-4"><i class="fa-solid fa-volume-high"></i></button>
         </div>
         
         <!-- Mode Switcher -->
-        <div class="px-6 mt-4 flex bg-[#1e293b] p-1 rounded-xl">
-            <button onclick="setMode('dpad')" id="btn-mode-dpad" class="flex-1 py-2 rounded-lg bg-[#334155] text-white text-sm font-semibold transition-all">Крестовина (ТВ)</button>
-            <button onclick="setMode('mouse')" id="btn-mode-mouse" class="flex-1 py-2 rounded-lg text-slate-400 text-sm font-semibold transition-all">Трекпад (Сайты)</button>
+        <div class="px-5 mt-4 flex bg-[#1e293b] p-1 rounded-xl">
+            <button onclick="setMode('dpad')" id="btn-mode-dpad" class="flex-1 py-2 rounded-lg bg-[#334155] text-white text-sm font-semibold transition-all">D-Pad</button>
+            <button onclick="setMode('mouse')" id="btn-mode-mouse" class="flex-1 py-2 rounded-lg text-slate-400 text-sm font-semibold transition-all">Trackpad</button>
         </div>
 
         <!-- D-PAD Area -->
-        <div id="area-dpad" class="flex flex-col items-center justify-center my-2 flex-1">
+        <div id="area-dpad" class="flex flex-col items-center justify-center my-2 flex-1 relative">
             <div class="dpad">
                 <button data-key="Up" class="dpad-btn dpad-up"><i class="fa-solid fa-chevron-up"></i></button>
                 <button data-key="Left" class="dpad-btn dpad-left"><i class="fa-solid fa-chevron-left"></i></button>
@@ -56,63 +63,65 @@
         </div>
 
         <!-- Mouse Area -->
-        <div id="area-mouse" class="flex flex-col items-center justify-center my-2 flex-1 section-hidden px-6">
+        <div id="area-mouse" class="flex flex-col items-center justify-center my-2 flex-1 section-hidden px-5">
             <div id="trackpad" class="mousepad">
-                <i class="fa-regular fa-hand-pointer text-3xl mb-2"></i>
-                <span class="text-xs">Водите пальцем, тапайте для клика</span>
+                <i class="fa-regular fa-hand-pointer text-3xl mb-2 text-slate-500"></i>
+                <span class="text-xs text-slate-400 font-medium">Swipe to move, tap to click</span>
             </div>
         </div>
 
         <!-- System Controls -->
-        <div class="grid grid-cols-2 gap-4 px-4 mt-auto pb-4">
-            <button onclick="goHome()" class="btn-action btn-blue flex flex-col gap-2">
+        <div class="grid grid-cols-2 gap-4 px-5 mt-auto pb-4">
+            <button onclick="goHome()" class="btn-action btn-blue flex flex-col gap-1">
                 <i class="fa-solid fa-house mb-1"></i>
-                <span class="text-xs font-medium text-center">На дашборд<br/>(Свернуть)</span>
+                <span class="text-xs font-medium text-center">Dashboard<br/>(Home)</span>
             </button>
             
-            <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-2">
+            <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-1">
                 <i class="fa-solid fa-power-off mb-1"></i>
-                <span class="text-xs font-medium text-center">Закрыть<br/>приложение</span>
+                <span class="text-xs font-medium text-center">Close<br/>Window</span>
             </button>
         </div>
 
         <!-- Settings Built into Remote -->
         <div id="settings-layer">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">Настройки ТВ</h2>
+                <h2 class="text-2xl font-bold">TV Settings</h2>
                 <button onclick="toggleSettings()" class="text-2xl text-slate-400 p-2"><i class="fa-solid fa-times"></i></button>
             </div>
             
             <div class="space-y-6 overflow-y-auto flex-1">
                 <div class="bg-[#1e293b] p-4 rounded-xl space-y-4">
                     <div>
-                        <label class="block text-slate-400 mb-2 text-sm font-medium">Обои дашборда (URL картинки или .mp4)</label>
+                        <label class="block text-slate-400 mb-2 text-sm font-medium">Dashboard Wallpaper (File)</label>
+                        <input type="file" id="file-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                        <p class="text-xs text-slate-500 mt-2 mb-1">Or provide a direct URL:</p>
                         <input type="text" id="input-wallpaper" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="https://.../bg.gif">
                     </div>
                     <div>
-                        <label class="block text-slate-400 mb-2 text-sm font-medium">IP-адрес ПК для Moonlight</label>
+                        <label class="block text-slate-400 mb-2 text-sm font-medium">PC IP Address (Moonlight)</label>
                         <input type="text" id="input-host" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.X">
                     </div>
                 </div>
                 
                 <div>
-                    <h3 class="text-lg font-bold mb-2">Вкладки Браузера</h3>
+                    <h3 class="text-lg font-bold mb-2">Browser Tabs</h3>
                     <div id="custom-links-container" class="space-y-3 mb-4">
                         <!-- Links List dynamically populated -->
                     </div>
                     
                     <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
-                        <h4 class="text-sm font-semibold mb-3">Добавить новую вкладку</h4>
-                        <input type="text" id="new-link-name" placeholder="Название (например, Google)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
+                        <h4 class="text-sm font-semibold mb-3">Add New Tab</h4>
+                        <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
                         <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
-                        <button onclick="addLink()" class="w-full py-3 bg-slate-700 rounded-lg font-semibold text-sm">Добавить</button>
+                        <button onclick="addLink()" class="w-full py-3 bg-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-600">Add</button>
                     </div>
                 </div>
             </div>
             
             <div class="mt-4 pt-4 border-t border-slate-700">
                 <button onclick="saveSettings(event)" class="bg-blue-600 w-full py-4 rounded-xl font-semibold text-lg text-white shadow-lg">
-                    Сохранить настройки
+                    Save Settings
                 </button>
             </div>
         </div>

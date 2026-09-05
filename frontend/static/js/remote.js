@@ -41,13 +41,40 @@ async function sendVolume(action) {
     } catch(e) {}
 }
 
-// Progressive Hold Logic
+async function sendText() {
+    const inp = document.getElementById('keyboard-input');
+    const text = inp.value;
+    if (!text) return;
+    vibrate();
+    
+    try {
+        await fetch('/api/remote/type', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ text })
+        });
+        inp.value = '';
+    } catch(e) {}
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const textInput = document.getElementById('keyboard-input');
+    if (textInput) {
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendText();
+            }
+        });
+    }
+});
+
 let holdInterval = null;
 let holdTimeout = null;
 
 function startHold(actionFn, arg) {
     vibrate();
-    actionFn(arg); // Initial press
+    actionFn(arg);
     holdTimeout = setTimeout(() => {
         holdInterval = setInterval(() => {
             vibrate();
@@ -62,7 +89,6 @@ function stopHold() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Setup D-Pad buttons
     const repeatKeys = ['Up', 'Down', 'Left', 'Right'];
     document.querySelectorAll('[data-key]').forEach(btn => {
         const key = btn.getAttribute('data-key');
@@ -88,7 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 2. Setup Volume buttons
     const repeatVols = ['up', 'down'];
     document.querySelectorAll('[data-vol]').forEach(btn => {
         const action = btn.getAttribute('data-vol');
@@ -114,7 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 3. Setup Trackpad
     const tp = document.getElementById('trackpad');
     if (tp) {
         let lastX = 0, lastY = 0;
@@ -149,20 +173,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 4. Load initial audio config
     loadAudioOutputs();
 });
 
-// System Actions
 async function killActive() {
     vibrate();
-    if(confirm('Точно закрыть запущенное приложение?')) {
+    if(confirm('Are you sure you want to close the active application?')) {
         fetch('/api/remote/kill_active', { method: 'POST' });
     }
 }
 function goHome() { vibrate(); fetch('/api/remote/home', { method: 'POST' }); }
 
-// Settings Logic
 let currentLinks = [];
 
 function toggleSettings() {
@@ -170,6 +191,7 @@ function toggleSettings() {
     const layer = document.getElementById('settings-layer');
     if (layer.style.display === 'flex') {
         layer.style.display = 'none';
+        document.getElementById('file-wallpaper').value = ""; 
     } else {
         layer.style.display = 'flex';
         fetchRemoteSettings();
@@ -194,7 +216,7 @@ function renderLinks() {
         c.innerHTML += `
             <div class="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-slate-700">
                 <div class="flex-1 overflow-hidden">
-                    <div class="font-bold text-sm truncate">${link.name}</div>
+                    <div class="font-bold text-sm truncate text-white">${link.name}</div>
                     <div class="text-xs text-slate-400 truncate">${link.url}</div>
                 </div>
                 <button onclick="removeLink('${link.id}')" class="text-red-400 p-2 ml-2"><i class="fa-solid fa-trash"></i></button>
@@ -214,7 +236,7 @@ function addLink() {
     const name = nameNode.value.trim();
     let url = urlNode.value.trim();
     
-    if(!name || !url) { alert("Заполните название и URL!"); return; }
+    if(!name || !url) { alert("Please set a name and URL!"); return; }
     if(!url.startsWith('http')) url = 'https://' + url;
     
     const id = 'link_' + Date.now();
@@ -228,22 +250,45 @@ function addLink() {
 async function saveSettings(event) {
     vibrate();
     const btn = event.target;
-    btn.textContent = 'Сохранение...';
+    btn.textContent = 'Saving...';
+    
+    let wallpaperUrl = document.getElementById('input-wallpaper').value;
+    const fileInput = document.getElementById('file-wallpaper');
+
+    if (fileInput.files.length > 0) {
+        btn.textContent = 'Uploading file...';
+        try {
+            const file = fileInput.files[0];
+            const ext = file.name.split('.').pop() || 'tmp';
+            const buffer = await file.arrayBuffer();
+            
+            const upRes = await fetch('/api/upload_wallpaper', {
+                method: 'POST',
+                headers: {'X-File-Ext': ext},
+                body: buffer
+            });
+            const upData = await upRes.json();
+            if (upData.url) {
+                wallpaperUrl = upData.url;
+            }
+        } catch (e) {
+            alert('File upload error!');
+        }
+    }
     
     await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            wallpaper_url: document.getElementById('input-wallpaper').value,
+            wallpaper_url: wallpaperUrl,
             moonlight_host: document.getElementById('input-host').value,
             custom_links: currentLinks
         })
     });
-    btn.textContent = 'Сохранить настройки';
+    btn.textContent = 'Save Settings';
     toggleSettings();
 }
 
-// Audio Selection
 async function loadAudioOutputs() {
     try {
         const res = await fetch('/api/remote/audio_outputs');

@@ -8,6 +8,9 @@ router = APIRouter()
 class KeyModel(BaseModel):
     key: str
 
+class TextModel(BaseModel):
+    text: str
+
 class AudioSinkModel(BaseModel):
     sink_name: str
 
@@ -19,6 +22,7 @@ class MouseModel(BaseModel):
     dy: float = 0
     click: str = ""
 
+
 @router.post("/kill_active")
 async def kill_active():
     killed_any = False
@@ -26,17 +30,15 @@ async def kill_active():
         await kill_app(app_id)
         killed_any = True
     if killed_any:
-        return {"status": "success", "message": "Все активные приложения закрыты"}
-    return {"status": "success", "message": "Нет активных приложений"}
+        return {"status": "success", "message": "All active applications closed"}
+    return {"status": "success", "message": "No active applications"}
 
 @router.post("/home")
 async def go_home():
     try:
-        # BUGFIX: Используем строку, так как xdotool с вложенным $() требует реального shell 
-        # Если полноэкранное окно (kiosk) сопротивляется минимизации, 'alt+tab' работает как запасной план
         cmd = "xdotool windowminimize $(xdotool getactivewindow) || xdotool key alt+Tab"
         subprocess.run(cmd, shell=True)
-        return {"status": "success", "message": "Переход домой"}
+        return {"status": "success", "message": "Going home"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -44,6 +46,14 @@ async def go_home():
 async def remote_input(key_data: KeyModel):
     try:
         subprocess.run(["xdotool", "key", key_data.key])
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/type")
+async def remote_type(data: TextModel):
+    try:
+        subprocess.run(["xdotool", "type", "--delay", "2", data.text])
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -70,7 +80,7 @@ async def control_volume(vol_data: VolumeModel):
         elif vol_data.action == "mute":
             cmd = ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"]
         else:
-            return {"status": "error", "message": "Неизвестное действие"}
+            return {"status": "error", "message": "Unknown action"}
             
         subprocess.run(cmd, check=False)
         return {"status": "success"}
@@ -94,7 +104,7 @@ async def get_audio_outputs():
         
         if sinks:
             return {"status": "success", "outputs": sinks}
-        return {"status": "success", "outputs": [{"id": "fallback", "name": "Устройства не найдены"}]}
+        return {"status": "success", "outputs": [{"id": "fallback", "name": "No devices found"}]}
     except Exception:
         return {"status": "success", "outputs": [{"id": "dummy1", "name": "TV AudioOut (HDMI)"}]}
 
@@ -102,6 +112,6 @@ async def get_audio_outputs():
 async def set_audio_output(sink_data: AudioSinkModel):
     try:
         subprocess.run(["pactl", "set-default-sink", sink_data.sink_name])
-        return {"status": "success"}
+        return {"status": "success", "message": "Audio output changed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

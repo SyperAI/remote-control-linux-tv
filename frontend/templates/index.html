@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,29 +11,36 @@
 </head>
 <body>
     
-    <!-- Background layer for custom wallpapers (images/videos) -->
+    <!-- Background layers -->
     <div id="dynamic-bg"></div>
+    <div id="bg-overlay" class="fixed inset-0 bg-black/30 z-[-1]"></div>
 
     <div class="tv-container">
         <!-- Header -->
         <header class="flex justify-between items-start mb-16">
             <div>
                 <div class="time-text" id="clock">00:00</div>
-                <div class="date-text" id="date">Загрузка...</div>
+                <div class="date-text" id="date">Loading...</div>
             </div>
             
             <div class="flex items-center gap-6">
-                <i class="fa-solid fa-wifi text-xl text-gray-400"></i>
+                <!-- Battery Status (Hidden by default, shown if API is supported) -->
+                <div id="battery-status" class="flex items-center gap-2 text-white/90 hidden">
+                    <i id="battery-icon" class="fa-solid fa-battery-full text-xl drop-shadow-md"></i>
+                    <span id="battery-level" class="font-medium drop-shadow-md">100%</span>
+                </div>
+            
+                <i class="fa-solid fa-wifi text-xl text-gray-300 drop-shadow-md"></i>
                 <div class="glass-panel px-4 py-2 text-sm flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                    <span class="font-medium text-white/90">Система готова</span>
+                    <span class="font-medium text-white/90 drop-shadow-md">System Ready</span>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
         <main class="flex-1 flex flex-col justify-center relative">
-            <h2 class="text-4xl font-semibold mb-10 text-white drop-shadow-lg">Приложения</h2>
+            <h2 class="text-4xl font-semibold mb-10 text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">Applications</h2>
             
             <!-- Dynamic Grid (populated by static/js/tv.js) -->
             <div id="apps-grid" class="grid grid-cols-1 md:grid-cols-3 gap-10 w-full max-w-7xl">
@@ -43,7 +50,7 @@
         
         <!-- Toast Status -->
         <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 glass-panel px-8 py-4 opacity-0 transition-opacity duration-300 pointer-events-none z-50">
-            <span id="toast-message" class="text-lg font-medium shadow-sm"></span>
+            <span id="toast-message" class="text-lg font-medium shadow-sm drop-shadow-md"></span>
         </div>
     </div>
 
