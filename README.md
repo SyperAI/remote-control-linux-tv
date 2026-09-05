@@ -27,8 +27,8 @@ A lightweight, modern web-based dashboard designed to turn any Linux desktop/HTP
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/remote-control.git
-   cd remote-control
+   git clone [https://github.com/yourusername/remote-control.git](https://github.com/SyperAI/remote-control-linux-tv.git)
+   cd remote-control-linux-tv
    ```
 
 2. Install dependencies and set up the virtual environment using `uv`:
