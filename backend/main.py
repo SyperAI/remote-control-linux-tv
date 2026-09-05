@@ -4,6 +4,7 @@ import subprocess
 import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import logging
 
@@ -18,6 +19,15 @@ SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settin
 class SettingsModel(BaseModel):
     website_url: str
     moonlight_host: str
+
+class KeyModel(BaseModel):
+    key: str
+
+class AudioSinkModel(BaseModel):
+    sink_name: str
+
+class VolumeModel(BaseModel):
+    action: str  # "up", "down", "mute"
 
 def get_settings():
     if os.path.exists(SETTINGS_FILE):
@@ -92,9 +102,6 @@ async def launch_app(app_id: str):
 
 @app.delete("/api/kill/{app_id}")
 async def kill_app(app_id: str):
-    if app_id not in ["youtube", "website", "moonlight"]:
-        raise HTTPException(status_code=404, detail="Приложение не найдено")
-        
     process = active_processes.get(app_id)
     if not process or process.poll() is not None:
         return {"status": "success", "message": "Процесс не найден или уже закрыт."}
@@ -115,7 +122,94 @@ async def kill_app(app_id: str):
         logger.error(f"Error killing {app_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==========================================
+# REMOTE CONTROL API
+# ==========================================
+
+@app.post("/api/remote/kill_active")
+async def kill_active():
+    """Закрывает все запущенные нами приложения."""
+    killed_any = False
+    for app_id in list(active_processes.keys()):
+        await kill_app(app_id)
+        killed_any = True
+    if killed_any:
+        return {"status": "success", "message": "Все активные приложения закрыты"}
+    return {"status": "success", "message": "Нет активных приложений"}
+
+@app.post("/api/remote/home")
+async def go_home():
+    """Переходит в меню (сворачивает приложения на Linux)."""
+    try:
+        # Используем xdotool (X11) для минимизации активного окна
+        # Для Wayland/GNOME можно использовать `ydotool` или dbus
+        subprocess.run(["xdotool", "windowminimize", "$(xdotool getactivewindow)"], shell=True)
+        return {"status": "success", "message": "Переход домой"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/remote/input")
+async def remote_input(key_data: KeyModel):
+    """Отправляет нажатия клавиш с пульта D-Pad."""
+    # Транслируем ключи в формат xdotool (Left, Right, Up, Down, Return)
+    try:
+        subprocess.run(["xdotool", "key", key_data.key])
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": "Требуется пакет xdotool: " + str(e)}
+
+@app.post("/api/remote/volume")
+async def control_volume(vol_data: VolumeModel):
+    """Управление громкостью через PulseAudio/PipeWire"""
+    try:
+        if vol_data.action == "up":
+            cmd = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"]
+        elif vol_data.action == "down":
+            cmd = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"]
+        elif vol_data.action == "mute":
+            cmd = ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"]
+        else:
+            return {"status": "error", "message": "Неизвестное действие"}
+            
+        subprocess.run(cmd, check=False)
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/remote/audio_outputs")
+async def get_audio_outputs():
+    """Получает список аудио-устройств (с Linux pc)."""
+    try:
+        result = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True)
+        sinks = []
+        for line in result.stdout.strip().split("\n"):
+            if not line: continue
+            parts = line.split()
+            if len(parts) >= 2:
+                idx = parts[0]
+                name = parts[1]
+                sinks.append({"id": name, "name": name})
+        return {"status": "success", "outputs": sinks}
+    except Exception:
+        # Эмуляция для Windows / если нет pactl
+        return {"status": "success", "outputs": [{"id": "dummy1", "name": "TV AudioOut (HDMI)"}, {"id": "dummy2", "name": "Headphones"}]}
+
+@app.post("/api/remote/audio_outputs")
+async def set_audio_output(sink_data: AudioSinkModel):
+    """Устанавливает выбранное аудио-устройство."""
+    try:
+        subprocess.run(["pactl", "set-default-sink", sink_data.sink_name])
+        return {"status": "success", "message": "Аудио-выход изменён"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# Serve remote interface
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+@app.get("/remote")
+async def remote_ui():
+    return FileResponse(os.path.join(frontend_dir, "remote.html"))
+
+# Подключаем статику
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 else:
