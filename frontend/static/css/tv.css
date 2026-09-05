@@ -5,6 +5,12 @@ body {
     overflow: hidden;
     user-select: none;
     background: #000;
+    cursor: none !important; /* Hide mouse cursor on Smart TV Dashboard */
+}
+
+/* Force override for all elements on the dashboard */
+* {
+    cursor: none !important;
 }
 
 #dynamic-bg {
@@ -51,10 +57,6 @@ body {
     transform: skewX(-25deg);
     transition: left 0.7s ease;
     z-index: 1;
-}
-
-.app-card {
-    cursor: pointer;
 }
 
 .app-card > * {

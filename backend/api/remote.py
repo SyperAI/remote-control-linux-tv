@@ -1,5 +1,4 @@
 import subprocess
-import asyncio
 from fastapi import APIRouter
 from pydantic import BaseModel
 from .core import kill_app, active_processes
@@ -49,7 +48,8 @@ async def go_home():
 @router.post("/input")
 async def remote_input(key_data: KeyModel):
     try:
-        await asyncio.create_subprocess_exec("xdotool", "key", key_data.key)
+        # Non-blocking explicitly using Popen to prevent lag, avoiding asyncio.create_subprocess_exec compatibility issues
+        subprocess.Popen(["xdotool", "key", key_data.key], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -57,7 +57,7 @@ async def remote_input(key_data: KeyModel):
 @router.post("/type")
 async def remote_type(data: TextModel):
     try:
-        await asyncio.create_subprocess_exec("xdotool", "type", "--delay", "5", data.text)
+        subprocess.Popen(["xdotool", "type", "--delay", "5", data.text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -66,10 +66,10 @@ async def remote_type(data: TextModel):
 async def remote_mouse(mouse_data: MouseModel):
     try:
         if mouse_data.click:
-            await asyncio.create_subprocess_exec("xdotool", "click", "1")
+            subprocess.Popen(["xdotool", "click", "1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             if mouse_data.dx != 0 or mouse_data.dy != 0:
-                await asyncio.create_subprocess_exec("xdotool", "mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy)))
+                subprocess.Popen(["xdotool", "mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -86,7 +86,7 @@ async def control_volume(vol_data: VolumeModel):
         else:
             return {"status": "error", "message": "Unknown action"}
             
-        await asyncio.create_subprocess_exec(*cmd)
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -122,7 +122,7 @@ async def get_audio_outputs():
 async def set_audio_output(sink_data: AudioSinkModel):
     try:
         # First, unload any existing combine modules to prevent duplicates/errors
-        subprocess.run(["pactl", "unload-module", "module-combine-sink"], capture_output=True)
+        subprocess.run(["pactl", "unload-module", "module-combine-sink"], capture_output=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         if sink_data.sink_name == "special_combine_audio":
             # Load the combine module
@@ -130,50 +130,45 @@ async def set_audio_output(sink_data: AudioSinkModel):
                 "pactl", "load-module", "module-combine-sink",
                 "sink_name=combined_audio",
                 "sink_properties=device.description=Combined_All_Headphones"
-            ], capture_output=True)
+            ], capture_output=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
             # Set the combined sink as default
-            await asyncio.create_subprocess_exec("pactl", "set-default-sink", "combined_audio")
+            subprocess.Popen(["pactl", "set-default-sink", "combined_audio"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             # Standard single sink assignment
-            await asyncio.create_subprocess_exec("pactl", "set-default-sink", sink_data.sink_name)
+            subprocess.Popen(["pactl", "set-default-sink", sink_data.sink_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
         return {"status": "success", "message": "Audio output changed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Bluetooth Management
+# Bluetooth Management (Using standard synchronous calls for max stability)
 @router.get("/bluetooth")
 async def list_bluetooth():
     try:
-        res = await asyncio.create_subprocess_exec("bluetoothctl", "devices", stdout=asyncio.subprocess.PIPE)
-        stdout, _ = await res.communicate()
+        res = subprocess.run(["bluetoothctl", "devices"], capture_output=True, text=True)
         
         devices = []
-        for line in stdout.decode().split('\n'):
+        for line in res.stdout.split('\n'):
             if line.startswith("Device"):
                 parts = line.split(" ", 2)
                 if len(parts) == 3:
-                    devices.append({"mac": parts[1], "name": parts[2].strip()})
+                    mac, name = parts[1], parts[2].strip()
+                    
+                    # Fetch detailed info for connection status
+                    info = subprocess.run(["bluetoothctl", "info", mac], capture_output=True, text=True)
+                    connected = "Connected: yes" in info.stdout
+                    
+                    devices.append({"mac": mac, "name": name, "connected": connected})
         
-        # Parallel async check for active connections
-        async def check_info(d):
-            p = await asyncio.create_subprocess_exec("bluetoothctl", "info", d["mac"], stdout=asyncio.subprocess.PIPE)
-            out, _ = await p.communicate()
-            d["connected"] = "Connected: yes" in out.decode()
-            return d
-            
-        results = await asyncio.gather(*(check_info(d) for d in devices))
-        
-        return {"status": "success", "devices": results}
+        return {"status": "success", "devices": devices}
     except Exception as e:
         return {"status": "error", "message": str(e)}
         
 @router.post("/bluetooth/connect")
 async def bt_connect(data: BluetoothMacModel):
     try:
-        p = await asyncio.create_subprocess_exec("bluetoothctl", "connect", data.mac)
-        await p.wait()
+        subprocess.run(["bluetoothctl", "connect", data.mac], capture_output=True)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -181,8 +176,7 @@ async def bt_connect(data: BluetoothMacModel):
 @router.post("/bluetooth/disconnect")
 async def bt_disconnect(data: BluetoothMacModel):
     try:
-        p = await asyncio.create_subprocess_exec("bluetoothctl", "disconnect", data.mac)
-        await p.wait()
+        subprocess.run(["bluetoothctl", "disconnect", data.mac], capture_output=True)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
