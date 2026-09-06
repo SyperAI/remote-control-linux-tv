@@ -161,6 +161,87 @@ function updateFocus() {
     });
 }
 
+// GAMEPAD API LOGIC
+let gamepadState = {}; 
+
+function pollGamepads() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    
+    for (let i = 0; i < gamepads.length; i++) {
+        const gp = gamepads[i];
+        if (!gp) continue;
+
+        if (!gamepadState[i]) gamepadState[i] = { buttons: {}, axes: {} };
+        const state = gamepadState[i];
+
+        const checkButton = (btnIdx, action) => {
+            if (gp.buttons[btnIdx] && gp.buttons[btnIdx].pressed) {
+                if (!state.buttons[btnIdx]) {
+                    state.buttons[btnIdx] = true;
+                    action();
+                }
+            } else {
+                state.buttons[btnIdx] = false;
+            }
+        };
+
+        const navItems = document.querySelectorAll('.nav-item');
+        if (navItems.length === 0) continue;
+        const cols = 3;
+
+        // D-Pad
+        checkButton(14, () => { if (currentIndex > 0) { currentIndex--; updateFocus(); } }); // Left
+        checkButton(15, () => { if (currentIndex < navItems.length - 1) { currentIndex++; updateFocus(); } }); // Right
+        checkButton(12, () => { if (currentIndex - cols >= 0) { currentIndex -= cols; updateFocus(); } }); // Up
+        checkButton(13, () => { 
+            if (currentIndex + cols < navItems.length) { currentIndex += cols; } 
+            else { currentIndex = navItems.length - 1; }
+            updateFocus(); 
+        }); // Down
+
+        // A Button (Select) (usually btn 0 on Xbox mapping)
+        checkButton(0, () => { 
+            if (navItems[currentIndex]) {
+                navItems[currentIndex].classList.add("scale-95", "opacity-80", "transition");
+                setTimeout(() => navItems[currentIndex].classList.remove("scale-95", "opacity-80"), 150);
+                navItems[currentIndex].click(); 
+            }
+        });
+
+        // Left Analog Stick
+        const axisThresholdOuter = 0.6;
+        const axisThresholdInner = 0.3; // Used to reset holding state
+        
+        const axX = gp.axes[0];
+        const axY = gp.axes[1];
+        
+        // Horizontal Support
+        if (axX < -axisThresholdOuter) {
+            if (!state.axes.left) { state.axes.left = true; if (currentIndex > 0) { currentIndex--; updateFocus(); } }
+        } else if (axX > -axisThresholdInner) { state.axes.left = false; }
+        
+        if (axX > axisThresholdOuter) {
+            if (!state.axes.right) { state.axes.right = true; if (currentIndex < navItems.length - 1) { currentIndex++; updateFocus(); } }
+        } else if (axX < axisThresholdInner) { state.axes.right = false; }
+
+        // Vertical Support
+        if (axY < -axisThresholdOuter) {
+            if (!state.axes.up) { state.axes.up = true; if (currentIndex - cols >= 0) { currentIndex -= cols; updateFocus(); } }
+        } else if (axY > -axisThresholdInner) { state.axes.up = false; }
+        
+        if (axY > axisThresholdOuter) {
+            if (!state.axes.down) { 
+                state.axes.down = true; 
+                if (currentIndex + cols < navItems.length) { currentIndex += cols; } 
+                else { currentIndex = navItems.length - 1; }
+                updateFocus();
+            }
+        } else if (axY < axisThresholdInner) { state.axes.down = false; }
+    }
+    
+    requestAnimationFrame(pollGamepads);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initBattery();
     
@@ -195,4 +276,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchConfig();
     setInterval(fetchConfig, 3000);
+    
+    // Start Gamepad tracking
+    window.addEventListener("gamepadconnected", (e) => {
+        console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+            e.gamepad.index, e.gamepad.id,
+            e.gamepad.buttons.length, e.gamepad.axes.length);
+    });
+    requestAnimationFrame(pollGamepads);
 });
+
