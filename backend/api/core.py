@@ -242,10 +242,18 @@ async def launch_app(app_id: str):
     profiles = settings.get("profiles", [])
     active_profile = next((p for p in profiles if p["id"] == active_id), profiles[0] if profiles else {})
 
+    profile_id = active_profile.get("id", "default")
+    
+    # Store sessions persistently per profile in the project directory rather than /tmp
+    base_sessions_dir = os.path.join(PROJECT_ROOT, "browser_sessions", profile_id)
+    os.makedirs(base_sessions_dir, exist_ok=True)
+    
+    yt_dir = os.path.join(base_sessions_dir, "youtube")
+
     APPS_CONFIG = {
         "youtube": {
             "name": "YouTube",
-            "command": ["chromium", "--user-data-dir=/tmp/tv_youtube", "--no-first-run", "--kiosk", "https://www.youtube.com/tv"]
+            "command": ["chromium", f"--user-data-dir={yt_dir}", "--no-first-run", "--kiosk", "--password-store=basic", "https://www.youtube.com/tv"]
         },
         "moonlight": {
             "name": "Moonlight",
@@ -254,9 +262,10 @@ async def launch_app(app_id: str):
     }
     
     for link in active_profile.get("custom_links", []):
+        link_dir = os.path.join(base_sessions_dir, link["id"])
         APPS_CONFIG[link["id"]] = {
             "name": link["name"],
-            "command": ["chromium", f"--user-data-dir=/tmp/tv_{link['id']}", "--no-first-run", "--kiosk", link["url"]]
+            "command": ["chromium", f"--user-data-dir={link_dir}", "--no-first-run", "--kiosk", "--password-store=basic", link["url"]]
         }
         
     for app in active_profile.get("custom_apps", []):
