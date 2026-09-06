@@ -229,6 +229,13 @@ async def launch_app(app_id: str):
     profiles = settings.get("profiles", [])
     active_profile = next((p for p in profiles if p["id"] == active_id), profiles[0] if profiles else {})
     
+    # Check if host is valid, otherwise open normal moonlight UI
+    moonlight_host = settings.get("moonlight_host", "").strip()
+    if moonlight_host:
+        moonlight_cmd = ["flatpak", "run", "com.moonlight_stream.Moonlight", "stream", moonlight_host]
+    else:
+        moonlight_cmd = ["flatpak", "run", "com.moonlight_stream.Moonlight"]
+
     APPS_CONFIG = {
         "youtube": {
             "name": "YouTube",
@@ -236,7 +243,7 @@ async def launch_app(app_id: str):
         },
         "moonlight": {
             "name": "Moonlight",
-            "command": ["flatpak", "run", "com.moonlight_stream.Moonlight", "stream", settings.get("moonlight_host", "")]
+            "command": moonlight_cmd
         }
     }
     
@@ -254,12 +261,18 @@ async def launch_app(app_id: str):
 
     config = APPS_CONFIG[app_id]
     
+    # We must ensure DISPLAY gets passed down to the Popen process,
+    # otherwise if the server was started via SSH it won't open on the TV screen.
+    launch_env = os.environ.copy()
+    if "DISPLAY" not in launch_env:
+        launch_env["DISPLAY"] = ":0"
+        
     try:
         logger.info(f"Launching {config['name']} with command: {' '.join(config['command'])}")
+        # Notice we are letting stdout/stderr print to the process console to help debug
         process = subprocess.Popen(
             config['command'],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            env=launch_env
         )
         active_processes[app_id] = process
         return {"status": "success", "message": f"{config['name']} launched"}
