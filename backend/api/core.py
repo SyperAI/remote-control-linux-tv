@@ -21,29 +21,71 @@ class CustomLink(BaseModel):
     name: str
     url: str
 
-class SettingsModel(BaseModel):
+class ProfileModel(BaseModel):
+    id: str
+    name: str
     wallpaper_url: str = ""
-    moonlight_host: str
+    password: str = ""
+    show_youtube: bool = True
+    show_moonlight: bool = True
     custom_links: List[CustomLink]
 
+class SettingsModel(BaseModel):
+    default_wallpaper: str = ""
+    moonlight_host: str = "192.168.1.10"
+    active_profile_id: str = "default"
+    profiles: List[ProfileModel] = []
+
+class SwitchProfileRequest(BaseModel):
+    profile_id: str
+    password: str = ""
+
+
 def get_settings():
+    default_data = {
+        "default_wallpaper": "",
+        "moonlight_host": "192.168.1.10",
+        "active_profile_id": "default",
+        "profiles": [
+            {
+                "id": "default",
+                "name": "Default Profile",
+                "wallpaper_url": "",
+                "password": "",
+                "show_youtube": True,
+                "show_moonlight": True,
+                "custom_links": [{"id": "link_google", "name": "Google", "url": "https://google.com"}]
+            }
+        ]
+    }
+    
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if "wallpaper_url" not in data:
-                    data["wallpaper_url"] = ""
+                
+                if "profiles" not in data:
+                    data = {
+                        "default_wallpaper": data.get("wallpaper_url", ""),
+                        "moonlight_host": data.get("moonlight_host", "192.168.1.10"),
+                        "active_profile_id": "default",
+                        "profiles": [
+                            {
+                                "id": "default",
+                                "name": "Default Profile",
+                                "wallpaper_url": "",
+                                "password": "",
+                                "show_youtube": True,
+                                "show_moonlight": True,
+                                "custom_links": data.get("custom_links", [])
+                            }
+                        ]
+                    }
                 return data
         except Exception as e:
             logger.error(f"Error reading settings: {e}")
             
-    return {
-        "wallpaper_url": "",
-        "moonlight_host": "192.168.1.10",
-        "custom_links": [
-            {"id": "link_google", "name": "Google", "url": "https://google.com"}
-        ]
-    }
+    return default_data
 
 @router.get("/settings")
 def read_settings():
@@ -59,6 +101,51 @@ def write_settings(settings: SettingsModel):
     except Exception as e:
         logger.error(f"Error saving settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/tv_state")
+def get_tv_state():
+    settings = get_settings()
+    active_id = settings.get("active_profile_id", "default")
+    profiles = settings.get("profiles", [])
+    
+    active_profile = next((p for p in profiles if p["id"] == active_id), None)
+    if not active_profile and len(profiles) > 0:
+        active_profile = profiles[0]
+    elif not active_profile:
+        active_profile = {"name": "No Profile", "custom_links": [], "wallpaper_url": ""}
+
+    wallpaper = active_profile.get("wallpaper_url") or settings.get("default_wallpaper", "")
+    
+    return {
+        "moonlight_host": settings.get("moonlight_host", "192.168.1.10"),
+        "wallpaper_url": wallpaper,
+        "custom_links": active_profile.get("custom_links", []),
+        "profile_name": active_profile.get("name", "Unknown"),
+        "show_youtube": active_profile.get("show_youtube", True),
+        "show_moonlight": active_profile.get("show_moonlight", True)
+    }
+
+@router.post("/switch_profile")
+def switch_profile(req: SwitchProfileRequest):
+    settings = get_settings()
+    target = next((p for p in settings.get("profiles", []) if p["id"] == req.profile_id), None)
+    
+    if not target:
+        return {"status": "error", "message": "Profile not found"}
+        
+    if target.get("password") and target.get("password") != req.password:
+        return {"status": "error", "message": "Incorrect password"}
+        
+    settings["active_profile_id"] = req.profile_id
+    
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=4, ensure_ascii=False)
+        return {"status": "success", "message": f"Switched to {target['name']}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/upload_wallpaper")
 async def upload_wallpaper(request: Request):
@@ -84,6 +171,9 @@ async def upload_wallpaper(request: Request):
 @router.post("/launch/{app_id}")
 async def launch_app(app_id: str):
     settings = get_settings()
+    active_id = settings.get("active_profile_id", "default")
+    profiles = settings.get("profiles", [])
+    active_profile = next((p for p in profiles if p["id"] == active_id), profiles[0] if profiles else {})
     
     APPS_CONFIG = {
         "youtube": {
@@ -92,11 +182,11 @@ async def launch_app(app_id: str):
         },
         "moonlight": {
             "name": "Moonlight",
-            "command": ["flatpak", "run", "com.moonlight_stream.Moonlight", "stream", settings.get("moonlight_host")]
+            "command": ["flatpak", "run", "com.moonlight_stream.Moonlight", "stream", settings.get("moonlight_host", "")]
         }
     }
     
-    for link in settings.get("custom_links", []):
+    for link in active_profile.get("custom_links", []):
         APPS_CONFIG[link["id"]] = {
             "name": link["name"],
             "command": ["chromium", f"--user-data-dir=/tmp/tv_{link['id']}", "--no-first-run", "--kiosk", link["url"]]

@@ -29,7 +29,6 @@ function sendVolume(action) {
     fetch('/api/remote/volume', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action }) }).catch(e=>console.error(e));
 }
 
-// Progressive Hold Logic
 let holdInterval = null;
 let holdTimeout = null;
 function startHold(actionFn, arg) {
@@ -50,7 +49,6 @@ function stopHold() {
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    // LIVE TEXT INPUT (DELTA SYNC)
     let oldText = "";
     const liveInput = document.getElementById('live-text');
     if (liveInput) {
@@ -62,7 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const added = newText.slice(i);
             
             if (deleted > 0) {
-                // Send backspaces
                 for(let k=0; k<deleted; k++) sendInput('BackSpace');
             }
             if (added.length > 0) {
@@ -85,7 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
             oldText = "";
         });
     }
-
 
     const repeatKeys = ['Up', 'Down', 'Left', 'Right'];
     document.querySelectorAll('[data-key]').forEach(btn => {
@@ -119,7 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isRepeat) ['touchend', 'mouseup', 'mouseleave', 'touchcancel'].forEach(evt => btn.addEventListener(evt, stopHold));
     });
 
-    // BATCHED TRACKPAD (FIXED LAG)
     const tp = document.getElementById('trackpad');
     if (tp) {
         let lastX = 0, lastY = 0;
@@ -222,7 +217,6 @@ async function loadBluetoothDevices() {
 async function connectBT(mac) {
     vibrate();
     loadBluetoothDevices();
-    
     const list = document.getElementById('bt-devices-list');
     list.innerHTML = `<div class="text-center text-slate-500 mt-5"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><br/>Connecting to ${mac}...</div>`;
     
@@ -236,7 +230,6 @@ async function disconnectBT(mac) {
     setTimeout(loadBluetoothDevices, 1000);
 }
 
-
 async function killActive() {
     vibrate();
     if(confirm('Are you sure you want to close the active application?')) {
@@ -245,13 +238,18 @@ async function killActive() {
 }
 function goHome() { vibrate(); fetch('/api/remote/home', { method: 'POST' }); }
 
-let currentLinks = [];
+
+// PROFILES & SETTINGS LOGIC
+let fullSettings = null;
+let editingProfileId = null;
+
 function toggleSettings() {
     vibrate();
     const layer = document.getElementById('settings-layer');
     if (layer.style.display === 'flex') {
         layer.style.display = 'none';
-        document.getElementById('file-wallpaper').value = ""; 
+        document.getElementById('file-default-wallpaper').value = "";
+        document.getElementById('file-prof-wallpaper').value = "";
     } else {
         layer.style.display = 'flex';
         fetchRemoteSettings();
@@ -261,36 +259,136 @@ function toggleSettings() {
 async function fetchRemoteSettings() {
     try {
         const res = await fetch('/api/settings');
-        const data = await res.json();
-        document.getElementById('input-wallpaper').value = data.wallpaper_url || '';
-        document.getElementById('input-host').value = data.moonlight_host || '';
-        currentLinks = data.custom_links || [];
-        renderLinks();
-    } catch (e) {}
+        fullSettings = await res.json();
+        
+        if (!fullSettings.profiles) fullSettings.profiles = [];
+        
+        document.getElementById('input-default-wallpaper').value = fullSettings.default_wallpaper || '';
+        document.getElementById('input-host').value = fullSettings.moonlight_host || '';
+        
+        populateProfileDropdown();
+        
+        if (fullSettings.profiles.length > 0) {
+            const active = fullSettings.profiles.find(p => p.id === fullSettings.active_profile_id);
+            editingProfileId = active ? active.id : fullSettings.profiles[0].id;
+        } else {
+            editingProfileId = null;
+        }
+        
+        renderEditingProfile();
+    } catch (e) {
+        console.error("Failed to load settings");
+    }
 }
 
-function renderLinks() {
+function populateProfileDropdown() {
+    const sel = document.getElementById('profile-selector');
+    sel.innerHTML = '';
+    
+    if (!fullSettings.profiles || fullSettings.profiles.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = "No Profiles Available";
+        sel.appendChild(opt);
+        return;
+    }
+    
+    fullSettings.profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        let prefix = (p.id === fullSettings.active_profile_id) ? "📺 [ACTIVE] " : "";
+        opt.textContent = prefix + p.name;
+        sel.appendChild(opt);
+    });
+}
+
+function renderEditingProfile() {
+    if (!editingProfileId) return;
+    
+    document.getElementById('profile-selector').value = editingProfileId;
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (!prof) return;
+    
+    document.getElementById('prof-name').value = prof.name || '';
+    document.getElementById('prof-password').value = prof.password || '';
+    document.getElementById('prof-wallpaper').value = prof.wallpaper_url || '';
+    
+    document.getElementById('prof-show-yt').checked = (prof.show_youtube !== false);
+    document.getElementById('prof-show-ml').checked = (prof.show_moonlight !== false);
+    
+    renderLinks(prof.custom_links || []);
+}
+
+function switchEditingProfile() {
+    const sel = document.getElementById('profile-selector');
+    if (!sel.value) return;
+    saveCurrentProfileEditsToMemory(); 
+    editingProfileId = sel.value;
+    renderEditingProfile();
+}
+
+function addProfile() {
+    saveCurrentProfileEditsToMemory();
+    const id = 'prof_' + Date.now();
+    fullSettings.profiles.push({
+        id: id,
+        name: 'New Profile',
+        password: '',
+        wallpaper_url: '',
+        show_youtube: true,
+        show_moonlight: true,
+        custom_links: []
+    });
+    populateProfileDropdown();
+    editingProfileId = id;
+    renderEditingProfile();
+}
+
+function deleteEditingProfile() {
+    if(!confirm("Delete this profile?")) return;
+    fullSettings.profiles = fullSettings.profiles.filter(p => p.id !== editingProfileId);
+    
+    if (fullSettings.profiles.length > 0) {
+        editingProfileId = fullSettings.profiles[0].id;
+    } else {
+        editingProfileId = null;
+    }
+    populateProfileDropdown();
+    renderEditingProfile();
+}
+
+function renderLinks(links) {
     const c = document.getElementById('custom-links-container');
     c.innerHTML = '';
-    currentLinks.forEach(link => {
+    
+    if (links.length === 0) {
+        c.innerHTML = '<div class="text-xs text-slate-500 italic pb-2">No apps added for this profile.</div>';
+    }
+    
+    links.forEach(link => {
         c.innerHTML += `
-            <div class="flex items-center justify-between bg-[#1e293b] p-3 rounded-xl border border-slate-700">
+            <div class="flex items-center justify-between bg-[#0f172a] p-3 rounded-xl border border-slate-700 shadow-inner">
                 <div class="flex-1 overflow-hidden">
                     <div class="font-bold text-sm truncate text-white">${link.name}</div>
                     <div class="text-xs text-slate-400 truncate">${link.url}</div>
                 </div>
-                <button onclick="removeLink('${link.id}')" class="text-red-400 p-2 ml-2"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="removeLink('${link.id}')" class="text-red-400 p-2 ml-2 hover:bg-red-500/20 rounded-lg"><i class="fa-solid fa-trash"></i></button>
             </div>
         `;
     });
 }
 
 function removeLink(id) {
-    currentLinks = currentLinks.filter(l => l.id !== id);
-    renderLinks();
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if(prof) {
+        prof.custom_links = prof.custom_links.filter(l => l.id !== id);
+        renderLinks(prof.custom_links);
+    }
 }
 
 function addLink() {
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (!prof) return;
+    
     const nameNode = document.getElementById('new-link-name');
     const urlNode = document.getElementById('new-link-url');
     const name = nameNode.value.trim();
@@ -299,10 +397,70 @@ function addLink() {
     if(!name || !url) { alert("Please set a name and URL!"); return; }
     if(!url.startsWith('http')) url = 'https://' + url;
     
-    const id = 'link_' + Date.now();
-    currentLinks.push({ id, name, url });
+    if (!prof.custom_links) prof.custom_links = [];
+    prof.custom_links.push({ id: 'link_' + Date.now(), name, url });
     nameNode.value = ''; urlNode.value = '';
-    renderLinks();
+    renderLinks(prof.custom_links);
+}
+
+function saveCurrentProfileEditsToMemory() {
+    if (!editingProfileId || !fullSettings || !fullSettings.profiles) return;
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (prof) {
+        prof.name = document.getElementById('prof-name').value;
+        prof.password = document.getElementById('prof-password').value;
+        prof.wallpaper_url = document.getElementById('prof-wallpaper').value;
+        prof.show_youtube = document.getElementById('prof-show-yt').checked;
+        prof.show_moonlight = document.getElementById('prof-show-ml').checked;
+    }
+}
+
+async function castActiveProfile() {
+    vibrate();
+    saveCurrentProfileEditsToMemory(); 
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (!prof) return;
+    
+    let enteredPassword = "";
+    if (prof.password) {
+        enteredPassword = prompt(`Profile ${prof.name} is password protected.\nEnter PIN/Password:`);
+        if (enteredPassword === null) return; 
+    }
+    
+    try {
+        const res = await fetch('/api/switch_profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_id: prof.id, password: enteredPassword })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            alert(`Success: Switched TV to ${prof.name}! (Make sure to Save Changes if you edited apps)`);
+            fullSettings.active_profile_id = prof.id;
+            populateProfileDropdown();
+        } else {
+            alert(`Error: ${data.message}`);
+        }
+    } catch(e) {
+        alert("Failed to communicate with TV");
+    }
+}
+
+async function uploadFile(fileInputId) {
+    const fileInput = document.getElementById(fileInputId);
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const ext = file.name.split('.').pop() || 'tmp';
+        const buffer = await file.arrayBuffer();
+        const res = await fetch('/api/upload_wallpaper', {
+            method: 'POST',
+            headers: {'X-File-Ext': ext},
+            body: buffer
+        });
+        const data = await res.json();
+        return data.url;
+    }
+    return null;
 }
 
 async function saveSettings(event) {
@@ -310,37 +468,32 @@ async function saveSettings(event) {
     const btn = event.target;
     btn.textContent = 'Saving...';
     
-    let wallpaperUrl = document.getElementById('input-wallpaper').value;
-    const fileInput = document.getElementById('file-wallpaper');
-
-    if (fileInput.files.length > 0) {
-        btn.textContent = 'Uploading file...';
-        try {
-            const file = fileInput.files[0];
-            const ext = file.name.split('.').pop() || 'tmp';
-            const buffer = await file.arrayBuffer();
-            const upRes = await fetch('/api/upload_wallpaper', {
-                method: 'POST',
-                headers: {'X-File-Ext': ext},
-                body: buffer
-            });
-            const upData = await upRes.json();
-            if (upData.url) wallpaperUrl = upData.url;
-        } catch (e) {
-            alert('File upload error!');
+    saveCurrentProfileEditsToMemory();
+    
+    try {
+        const globalUrl = await uploadFile('file-default-wallpaper');
+        if (globalUrl) document.getElementById('input-default-wallpaper').value = globalUrl;
+        
+        const profUrl = await uploadFile('file-prof-wallpaper');
+        if (profUrl) {
+            document.getElementById('prof-wallpaper').value = profUrl;
+            saveCurrentProfileEditsToMemory(); 
         }
+        
+    } catch (e) {
+        alert('File upload error!');
     }
     
+    fullSettings.default_wallpaper = document.getElementById('input-default-wallpaper').value;
+    fullSettings.moonlight_host = document.getElementById('input-host').value;
+
     await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            wallpaper_url: wallpaperUrl,
-            moonlight_host: document.getElementById('input-host').value,
-            custom_links: currentLinks
-        })
+        body: JSON.stringify(fullSettings)
     });
-    btn.textContent = 'Save Settings';
+    
+    btn.textContent = 'Save Changes';
     toggleSettings();
 }
 

@@ -28,8 +28,8 @@
                 <button onclick="toggleBluetooth()" class="btn-action !p-3 !px-4 text-blue-400" title="Bluetooth">
                     <i class="fa-brands fa-bluetooth-b"></i>
                 </button>
-                <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-slate-300" title="TV Settings">
-                    <i class="fa-solid fa-gear"></i>
+                <button onclick="toggleSettings()" class="btn-action !p-3 !px-4 text-emerald-400" title="TV Settings & Profiles">
+                    <i class="fa-solid fa-users-gear"></i>
                 </button>
             </div>
         </div>
@@ -97,42 +97,109 @@
         <!-- Settings Overlay -->
         <div id="settings-layer">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">TV Settings</h2>
+                <h2 class="text-2xl font-bold">Settings & Profiles</h2>
                 <button onclick="toggleSettings()" class="text-2xl text-slate-400 p-2"><i class="fa-solid fa-times"></i></button>
             </div>
             
-            <div class="space-y-6 overflow-y-auto flex-1">
-                <div class="bg-[#1e293b] p-4 rounded-xl space-y-4">
-                    <div>
-                        <label class="block text-slate-400 mb-2 text-sm font-medium">Dashboard Wallpaper (File)</label>
-                        <input type="file" id="file-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                        <p class="text-xs text-slate-500 mt-2 mb-1">Or provide a direct URL:</p>
-                        <input type="text" id="input-wallpaper" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="https://.../bg.gif">
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-2 text-sm font-medium">PC IP Address (Moonlight)</label>
-                        <input type="text" id="input-host" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.X">
-                    </div>
-                </div>
+            <div class="space-y-5 overflow-y-auto flex-1 pb-20">
                 
+                <!-- Global Config -->
                 <div>
-                    <h3 class="text-lg font-bold mb-2">Browser Tabs</h3>
-                    <div id="custom-links-container" class="space-y-3 mb-4">
-                        <!-- Links dynamically populated -->
-                    </div>
-                    
-                    <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
-                        <h4 class="text-sm font-semibold mb-3">Add New Tab</h4>
-                        <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
-                        <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
-                        <button onclick="addLink()" class="w-full py-3 bg-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-600">Add</button>
+                    <h3 class="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-2 ml-1">Global Settings</h3>
+                    <div class="bg-[#1e293b] p-4 rounded-xl space-y-4">
+                        <div>
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Default Wallpaper (Background)</label>
+                            <input type="file" id="file-default-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                            <input type="text" id="input-default-wallpaper" class="w-full mt-2 p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="Or paste URL here (https://...)">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Moonlight Host IP</label>
+                            <input type="text" id="input-host" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.X">
+                        </div>
                     </div>
                 </div>
+
+                <!-- Profile Management -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-sm uppercase tracking-wider text-slate-400 font-semibold ml-1">Manage Profiles</h3>
+                    </div>
+                    <div class="bg-[#1e293b] p-4 rounded-xl space-y-4 border-2 border-emerald-500/20">
+                        
+                        <!-- Top actions for profile -->
+                        <div class="flex gap-2 relative">
+                            <select id="profile-selector" onchange="switchEditingProfile()" class="flex-1 p-3 rounded-lg text-sm bg-slate-800 text-white border border-slate-700 appearance-none font-semibold cursor-pointer">
+                                <!-- Populated dynamically -->
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-16 top-[50%] transform -translate-y-1/2 text-slate-500 pointer-events-none text-xs"></i>
+                            
+                            <button onclick="addProfile()" class="px-4 py-3 bg-slate-700 rounded-lg text-white font-bold" title="Add New Profile"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        
+                        <!-- Switch Active Button (Cast) -->
+                        <button onclick="castActiveProfile()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-tv"></i> Cast Profile to TV
+                        </button>
+
+                        <div class="h-px bg-slate-700 w-full my-4"></div>
+
+                        <!-- Profile Editing Fields -->
+                        <div>
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Name</label>
+                            <input type="text" id="prof-name" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+                            
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Password (Optional)</label>
+                            <input type="text" id="prof-password" placeholder="Leave empty for no password" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Wallpaper (Overrides Default)</label>
+                            <input type="file" id="file-prof-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                            <input type="text" id="prof-wallpaper" placeholder="Or URL..." class="w-full p-3 mt-2 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+                        </div>
+
+                        <!-- Default Built-in Apps Configuration -->
+                        <div class="mb-4">
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Default Built-in Apps</label>
+                            <div class="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+                                    <input type="checkbox" id="prof-show-yt" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
+                                    <i class="fa-brands fa-youtube text-red-500"></i> YouTube
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+                                    <input type="checkbox" id="prof-show-ml" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
+                                    <i class="fa-solid fa-desktop text-green-500"></i> Moonlight
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Profile Custom Links -->
+                        <div class="mt-5">
+                            <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Browser Tabs</label>
+                            <div id="custom-links-container" class="space-y-3 mb-4">
+                                <!-- Links dynamically populated -->
+                            </div>
+                            
+                            <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                                <h4 class="text-sm font-semibold mb-3">Add Custom App</h4>
+                                <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
+                                <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
+                                <button onclick="addLink()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add</button>
+                            </div>
+                        </div>
+
+                        <!-- Delete Profile -->
+                        <div class="pt-4 mt-2">
+                            <button onclick="deleteEditingProfile()" class="w-full py-3 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-lg text-sm font-semibold transition">
+                                <i class="fa-solid fa-trash mr-1"></i> Delete This Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             
-            <div class="mt-4 pt-4 border-t border-slate-700">
-                <button onclick="saveSettings(event)" class="bg-blue-600 w-full py-4 rounded-xl font-semibold text-lg text-white shadow-lg">
-                    Save Settings
+            <div class="absolute bottom-4 left-6 right-6">
+                <button onclick="saveSettings(event)" class="bg-blue-600 hover:bg-blue-500 transition w-full py-4 rounded-xl font-bold text-lg text-white shadow-xl shadow-blue-900/20">
+                    Save Changes
                 </button>
             </div>
         </div>

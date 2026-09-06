@@ -1,6 +1,5 @@
 function updateClock() {
     const now = new Date();
-    // Reverting clock to the classic 24-hour style that doesn't mess up 00:xx formats
     document.getElementById('clock').textContent = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     let dateStr = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
     document.getElementById('date').textContent = dateStr;
@@ -33,7 +32,6 @@ function updateBatteryUI(battery) {
     const level = Math.round(battery.level * 100);
     levelText.textContent = `${level}%`;
     
-    // Base classes
     icon.className = 'fa-solid text-xl drop-shadow-md ';
     
     if (battery.charging) {
@@ -81,7 +79,7 @@ function applyWallpaper(url) {
 
 async function fetchConfig() {
     try {
-        const res = await fetch('/api/settings');
+        const res = await fetch('/api/tv_state');
         const text = await res.text();
         
         if (text === lastConfigRaw) return;
@@ -90,22 +88,29 @@ async function fetchConfig() {
         
         applyWallpaper(data.wallpaper_url);
         
+        const profileNameEl = document.getElementById('profile-name');
+        if (profileNameEl) profileNameEl.textContent = data.profile_name || 'Guest';
+        
         const grid = document.getElementById('apps-grid');
         grid.innerHTML = '';
         
         // 1. YouTube
-        grid.innerHTML += `
-            <button onclick="launchApp('youtube')" class="nav-item app-card glass-panel glow-youtube h-64 p-8 flex flex-col justify-between text-left group">
-                <div class="w-16 h-16 rounded-[1.2rem] bg-red-500/20 text-red-100 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(239,68,68,0.3)]"><i class="fa-brands fa-youtube drop-shadow-md"></i></div>
-                <div><h3 class="text-3xl font-bold mb-2 tracking-tight">YouTube</h3><p class="text-white/60 text-sm font-medium">Videos, TV & streams</p></div>
-            </button>`;
+        if (data.show_youtube !== false) {
+            grid.innerHTML += `
+                <button onclick="launchApp('youtube')" class="nav-item app-card glass-panel glow-youtube h-64 p-8 flex flex-col justify-between text-left group">
+                    <div class="w-16 h-16 rounded-[1.2rem] bg-red-500/20 text-red-100 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(239,68,68,0.3)]"><i class="fa-brands fa-youtube drop-shadow-md"></i></div>
+                    <div><h3 class="text-3xl font-bold mb-2 tracking-tight">YouTube</h3><p class="text-white/60 text-sm font-medium">Videos, TV & streams</p></div>
+                </button>`;
+        }
 
         // 2. Moonlight
-        grid.innerHTML += `
-            <button onclick="launchApp('moonlight')" class="nav-item app-card glass-panel glow-moonlight h-64 p-8 flex flex-col justify-between text-left group">
-                <div class="w-16 h-16 rounded-[1.2rem] bg-green-500/20 text-green-100 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(34,197,94,0.3)]"><i class="fa-solid fa-desktop drop-shadow-md"></i></div>
-                <div><h3 class="text-3xl font-bold mb-2 tracking-tight">Moonlight</h3><p class="text-white/60 text-sm font-medium">PC: ${data.moonlight_host}</p></div>
-            </button>`;
+        if (data.show_moonlight !== false) {
+            grid.innerHTML += `
+                <button onclick="launchApp('moonlight')" class="nav-item app-card glass-panel glow-moonlight h-64 p-8 flex flex-col justify-between text-left group">
+                    <div class="w-16 h-16 rounded-[1.2rem] bg-green-500/20 text-green-100 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(34,197,94,0.3)]"><i class="fa-solid fa-desktop drop-shadow-md"></i></div>
+                    <div><h3 class="text-3xl font-bold mb-2 tracking-tight">Moonlight</h3><p class="text-white/60 text-sm font-medium">PC: ${data.moonlight_host}</p></div>
+                </button>`;
+        }
 
         // 3. Custom Browser Links
         if (data.custom_links && data.custom_links.length > 0) {
