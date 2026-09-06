@@ -1,8 +1,11 @@
+import os
 import subprocess
+import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
 from .core import kill_app, active_processes
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class KeyModel(BaseModel):
@@ -26,6 +29,21 @@ class BluetoothMacModel(BaseModel):
     mac: str
 
 
+def run_xdotool(args):
+    """Helper to run xdotool with explicit DISPLAY and error logging"""
+    env = os.environ.copy()
+    if "DISPLAY" not in env:
+        env["DISPLAY"] = ":0"
+        
+    try:
+        res = subprocess.run(["xdotool"] + args, env=env, capture_output=True, text=True)
+        if res.returncode != 0:
+            logger.error(f"xdotool error (code {res.returncode}): {res.stderr.strip()}")
+        return res
+    except Exception as e:
+        logger.error(f"xdotool execution failed: {e}")
+        raise e
+
 @router.post("/kill_active")
 async def kill_active():
     killed_any = False
@@ -39,8 +57,11 @@ async def kill_active():
 @router.post("/home")
 async def go_home():
     try:
+        env = os.environ.copy()
+        if "DISPLAY" not in env:
+            env["DISPLAY"] = ":0"
         cmd = "xdotool windowminimize $(xdotool getactivewindow) || xdotool key alt+Tab"
-        subprocess.run(cmd, shell=True)
+        subprocess.run(cmd, env=env, shell=True)
         return {"status": "success", "message": "Going home"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -48,7 +69,7 @@ async def go_home():
 @router.post("/input")
 async def remote_input(key_data: KeyModel):
     try:
-        subprocess.run(["xdotool", "key", key_data.key])
+        run_xdotool(["key", key_data.key])
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -56,7 +77,7 @@ async def remote_input(key_data: KeyModel):
 @router.post("/type")
 async def remote_type(data: TextModel):
     try:
-        subprocess.run(["xdotool", "type", "--delay", "5", data.text])
+        run_xdotool(["type", "--delay", "5", data.text])
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -65,10 +86,10 @@ async def remote_type(data: TextModel):
 async def remote_mouse(mouse_data: MouseModel):
     try:
         if mouse_data.click:
-            subprocess.run(["xdotool", "click", "1"])
+            run_xdotool(["click", "1"])
         else:
             if mouse_data.dx != 0 or mouse_data.dy != 0:
-                subprocess.run(["xdotool", "mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy))])
+                run_xdotool(["mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy))])
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
