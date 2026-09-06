@@ -256,11 +256,13 @@ async def launch_app(app_id: str):
 
     config = APPS_CONFIG[app_id]
     
-    # We must ensure DISPLAY gets passed down to the Popen process,
-    # otherwise if the server was started via SSH it won't open on the TV screen.
+    # Securely setup DBUS, AUDIO and DISPLAY without inheriting malformed strings from bash scripts
     launch_env = os.environ.copy()
-    if "DISPLAY" not in launch_env:
-        launch_env["DISPLAY"] = ":0"
+    
+    launch_env["DISPLAY"] = launch_env.get("DISPLAY", ":0").strip("'\"")
+    launch_env["XDG_RUNTIME_DIR"] = launch_env.get("XDG_RUNTIME_DIR", "/run/user/1000").strip("'\"")
+    launch_env["DBUS_SESSION_BUS_ADDRESS"] = launch_env.get("DBUS_SESSION_BUS_ADDRESS", f"unix:path={launch_env['XDG_RUNTIME_DIR']}/bus").strip("'\"")
+    launch_env["PULSE_SERVER"] = launch_env.get("PULSE_SERVER", f"unix:{launch_env['XDG_RUNTIME_DIR']}/pulse/native").strip("'\"")
         
     try:
         logger.info(f"Launching {config['name']} with command: {' '.join(config['command'])}")

@@ -32,8 +32,7 @@ class BluetoothMacModel(BaseModel):
 def run_xdotool(args):
     """Helper to run xdotool with explicit DISPLAY and error logging"""
     env = os.environ.copy()
-    if "DISPLAY" not in env:
-        env["DISPLAY"] = ":0"
+    env["DISPLAY"] = env.get("DISPLAY", ":0").strip("'\"")
         
     try:
         res = subprocess.run(["xdotool"] + args, env=env, capture_output=True, text=True)
@@ -47,8 +46,10 @@ def run_xdotool(args):
 def run_pactl(args):
     """Helper to run pactl with proper PulseAudio systemd env variables"""
     env = os.environ.copy()
-    if "XDG_RUNTIME_DIR" not in env:
-        env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+    
+    # Strip any accidental quotes from naive bash exports
+    env["XDG_RUNTIME_DIR"] = env.get("XDG_RUNTIME_DIR", "/run/user/1000").strip("'\"")
+    env["PULSE_SERVER"] = env.get("PULSE_SERVER", f"unix:{env['XDG_RUNTIME_DIR']}/pulse/native").strip("'\"")
     
     return subprocess.run(["pactl"] + args, env=env, capture_output=True, text=True)
 
@@ -66,8 +67,7 @@ async def kill_active():
 async def go_home():
     try:
         env = os.environ.copy()
-        if "DISPLAY" not in env:
-            env["DISPLAY"] = ":0"
+        env["DISPLAY"] = env.get("DISPLAY", ":0").strip("'\"")
         cmd = "xdotool windowminimize $(xdotool getactivewindow) || xdotool key alt+Tab"
         subprocess.run(cmd, env=env, shell=True)
         return {"status": "success", "message": "Going home"}
