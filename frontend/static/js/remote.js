@@ -468,33 +468,44 @@ async function saveSettings(event) {
     const btn = event.target;
     btn.textContent = 'Saving...';
     
-    saveCurrentProfileEditsToMemory();
-    
     try {
-        const globalUrl = await uploadFile('file-default-wallpaper');
-        if (globalUrl) document.getElementById('input-default-wallpaper').value = globalUrl;
+        saveCurrentProfileEditsToMemory();
         
-        const profUrl = await uploadFile('file-prof-wallpaper');
-        if (profUrl) {
-            document.getElementById('prof-wallpaper').value = profUrl;
-            saveCurrentProfileEditsToMemory(); 
+        try {
+            const globalUrl = await uploadFile('file-default-wallpaper');
+            if (globalUrl) document.getElementById('input-default-wallpaper').value = globalUrl;
+            
+            const profUrl = await uploadFile('file-prof-wallpaper');
+            if (profUrl) {
+                document.getElementById('prof-wallpaper').value = profUrl;
+                saveCurrentProfileEditsToMemory(); 
+            }
+        } catch (e) {
+            console.error('File upload error', e);
         }
         
-    } catch (e) {
-        alert('File upload error!');
-    }
-    
-    fullSettings.default_wallpaper = document.getElementById('input-default-wallpaper').value;
-    fullSettings.moonlight_host = document.getElementById('input-host').value;
+        fullSettings.default_wallpaper = document.getElementById('input-default-wallpaper').value;
+        fullSettings.moonlight_host = document.getElementById('input-host').value;
 
-    await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fullSettings)
-    });
-    
-    btn.textContent = 'Save Changes';
-    toggleSettings();
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fullSettings)
+        });
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            alert("Error saving settings to backend: " + res.status + " " + errorText);
+            btn.textContent = 'Save Changes';
+            return;
+        }
+        
+        btn.textContent = 'Save Changes';
+        toggleSettings();
+    } catch (e) {
+        alert("Client error saving settings: " + e.message);
+        btn.textContent = 'Save Changes';
+    }
 }
 
 async function loadAudioOutputs() {
