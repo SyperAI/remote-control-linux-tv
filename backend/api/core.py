@@ -228,13 +228,6 @@ async def launch_app(app_id: str):
     active_id = settings.get("active_profile_id", "default")
     profiles = settings.get("profiles", [])
     active_profile = next((p for p in profiles if p["id"] == active_id), profiles[0] if profiles else {})
-    
-    # Check if host is valid, otherwise open normal moonlight UI
-    moonlight_host = settings.get("moonlight_host", "").strip()
-    if moonlight_host:
-        moonlight_cmd = ["flatpak", "run", "com.moonlight_stream.Moonlight", "stream", moonlight_host]
-    else:
-        moonlight_cmd = ["flatpak", "run", "com.moonlight_stream.Moonlight"]
 
     APPS_CONFIG = {
         "youtube": {
@@ -243,7 +236,9 @@ async def launch_app(app_id: str):
         },
         "moonlight": {
             "name": "Moonlight",
-            "command": moonlight_cmd
+            # Launch standard GUI. The user can navigate via D-Pad or Mouse.
+            # Passing 'stream' argument requires an explicit App Name component which causes it to crash if omitted.
+            "command": ["flatpak", "run", "com.moonlight_stream.Moonlight"]
         }
     }
     
@@ -269,7 +264,7 @@ async def launch_app(app_id: str):
         
     try:
         logger.info(f"Launching {config['name']} with command: {' '.join(config['command'])}")
-        # Notice we are letting stdout/stderr print to the process console to help debug
+        
         process = subprocess.Popen(
             config['command'],
             env=launch_env
