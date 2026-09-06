@@ -1,0 +1,17 @@
+{
+  "name": "TV Remote",
+  "short_name": "TVSmart",
+  "start_url": "/remote",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Smart TV Remote Control",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

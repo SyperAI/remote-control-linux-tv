@@ -237,7 +237,7 @@ async function killActive() {
     }
 }
 function goHome() { vibrate(); fetch('/api/remote/home', { method: 'POST' }); }
-
+function toggleFullscreen() { vibrate(); sendInput('F11'); }
 
 // PROFILES & SETTINGS LOGIC
 let fullSettings = null;

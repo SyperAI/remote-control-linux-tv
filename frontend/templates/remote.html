@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TV Remote</title>
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon.svg">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -68,15 +75,20 @@
         </div>
 
         <!-- System Controls -->
-        <div class="grid grid-cols-2 gap-4 px-5 mt-auto pb-4">
-            <button onclick="goHome()" class="btn-action btn-blue flex flex-col gap-1">
-                <i class="fa-solid fa-house mb-1"></i>
-                <span class="text-xs font-medium text-center">Dashboard<br/>(Home)</span>
+        <div class="grid grid-cols-3 gap-3 px-5 mt-auto pb-4">
+            <button onclick="goHome()" class="btn-action flex flex-col gap-1 items-center justify-center">
+                <i class="fa-solid fa-house mb-1 text-slate-300"></i>
+                <span class="text-[10px] font-medium text-center text-slate-400">Home</span>
             </button>
             
-            <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-1">
+            <button onclick="toggleFullscreen()" class="btn-action flex flex-col gap-1 items-center justify-center">
+                <i class="fa-solid fa-expand mb-1 text-slate-300"></i>
+                <span class="text-[10px] font-medium text-center text-slate-400">Fullscreen</span>
+            </button>
+            
+            <button onclick="killActive()" class="btn-action btn-red flex flex-col gap-1 items-center justify-center">
                 <i class="fa-solid fa-power-off mb-1"></i>
-                <span class="text-xs font-medium text-center">Close<br/>Window</span>
+                <span class="text-[10px] font-medium text-center">Close App</span>
             </button>
         </div>
 
@@ -219,6 +231,16 @@
         </div>
     </div>
     
-    <script src="/static/js/remote.js?v=4"></script>
+    <script src="/static/js/remote.js?v=6"></script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js').catch(err => {
+                    console.log('SW Registration failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

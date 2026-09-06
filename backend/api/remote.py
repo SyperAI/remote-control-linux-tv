@@ -44,6 +44,14 @@ def run_xdotool(args):
         logger.error(f"xdotool execution failed: {e}")
         raise e
 
+def run_pactl(args):
+    """Helper to run pactl with proper PulseAudio systemd env variables"""
+    env = os.environ.copy()
+    if "XDG_RUNTIME_DIR" not in env:
+        env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+    
+    return subprocess.run(["pactl"] + args, env=env, capture_output=True, text=True)
+
 @router.post("/kill_active")
 async def kill_active():
     killed_any = False
@@ -98,15 +106,14 @@ async def remote_mouse(mouse_data: MouseModel):
 async def control_volume(vol_data: VolumeModel):
     try:
         if vol_data.action == "up":
-            cmd = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"]
+            run_pactl(["set-sink-volume", "@DEFAULT_SINK@", "+5%"])
         elif vol_data.action == "down":
-            cmd = ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"]
+            run_pactl(["set-sink-volume", "@DEFAULT_SINK@", "-5%"])
         elif vol_data.action == "mute":
-            cmd = ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"]
+            run_pactl(["set-sink-mute", "@DEFAULT_SINK@", "toggle"])
         else:
             return {"status": "error", "message": "Unknown action"}
             
-        subprocess.run(cmd)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -114,10 +121,10 @@ async def control_volume(vol_data: VolumeModel):
 @router.get("/audio_outputs")
 async def get_audio_outputs():
     try:
-        result = subprocess.run(["pactl", "list", "sinks"], capture_output=True, text=True)
+        result = run_pactl(["list", "sinks"])
         sinks = []
         
-        sinks.append({"id": "special_combine_audio", "name": "🎧 Play on ALL Headphones (Combine)"})
+        sinks.append({"id": "special_combine_audio", "name": "🎵 Play on ALL Headphones (Combine)"})
         
         current_name = None
         for line in result.stdout.split("\n"):
@@ -139,17 +146,17 @@ async def get_audio_outputs():
 @router.post("/audio_outputs")
 async def set_audio_output(sink_data: AudioSinkModel):
     try:
-        subprocess.run(["pactl", "unload-module", "module-combine-sink"])
+        run_pactl(["unload-module", "module-combine-sink"])
         
         if sink_data.sink_name == "special_combine_audio":
-            subprocess.run([
-                "pactl", "load-module", "module-combine-sink",
+            run_pactl([
+                "load-module", "module-combine-sink",
                 "sink_name=combined_audio",
                 "sink_properties=device.description=Combined_All_Headphones"
             ])
-            subprocess.run(["pactl", "set-default-sink", "combined_audio"])
+            run_pactl(["set-default-sink", "combined_audio"])
         else:
-            subprocess.run(["pactl", "set-default-sink", sink_data.sink_name])
+            run_pactl(["set-default-sink", sink_data.sink_name])
             
         return {"status": "success", "message": "Audio output changed"}
     except Exception as e:
