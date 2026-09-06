@@ -3,7 +3,7 @@ import json
 import subprocess
 import asyncio
 import time
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import logging
@@ -29,6 +29,7 @@ class ProfileModel(BaseModel):
     show_youtube: bool = True
     show_moonlight: bool = True
     custom_links: List[CustomLink]
+    is_locked: Optional[bool] = False
 
 class SettingsModel(BaseModel):
     default_wallpaper: str = ""
@@ -89,19 +90,73 @@ def get_settings():
 
 @router.get("/settings")
 def read_settings():
-    return get_settings()
+    # Return settings but mask locked profiles
+    data = get_settings()
+    for p in data.get("profiles", []):
+        if p.get("password"):
+            p["is_locked"] = True
+            p["password"] = "***LOCKED***"
+            p["custom_links"] = []
+            p["wallpaper_url"] = ""
+            p["show_youtube"] = False
+            p["show_moonlight"] = False
+        else:
+            p["is_locked"] = False
+    return data
 
 @router.post("/settings")
 def write_settings(settings: SettingsModel):
     try:
-        data = json.loads(settings.model_dump_json() if hasattr(settings, 'model_dump_json') else settings.json())
+        frontend_data = json.loads(settings.model_dump_json() if hasattr(settings, 'model_dump_json') else settings.json())
+        existing_data = get_settings()
+        existing_profiles_map = {p["id"]: p for p in existing_data.get("profiles", [])}
+        
+        # Merge locked profiles correctly
+        for i, p in enumerate(frontend_data.get("profiles", [])):
+            if p.get("password") == "***LOCKED***":
+                # Restore the hidden sensitive fields from the database
+                if p["id"] in existing_profiles_map:
+                    real = existing_profiles_map[p["id"]]
+                    p["password"] = real.get("password", "")
+                    p["custom_links"] = real.get("custom_links", [])
+                    p["wallpaper_url"] = real.get("wallpaper_url", "")
+                    p["show_youtube"] = real.get("show_youtube", True)
+                    p["show_moonlight"] = real.get("show_moonlight", True)
+                else:
+                    # Should not happen normally, but drop the locked status if no match
+                    p["password"] = ""
+            
+            # Ensure no dummy is_locked gets saved
+            if "is_locked" in p:
+                del p["is_locked"]
+        
+        # Ensure active_profile_id exists in the profiles list
+        if not any(p["id"] == frontend_data["active_profile_id"] for p in frontend_data.get("profiles", [])):
+            if frontend_data.get("profiles"):
+                frontend_data["active_profile_id"] = frontend_data["profiles"][0]["id"]
+            else:
+                frontend_data["active_profile_id"] = ""
+
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
+            json.dump(frontend_data, f, indent=4, ensure_ascii=False)
+            
         return {"status": "success", "message": "Settings saved"}
     except Exception as e:
         logger.error(f"Error saving settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/profile/unlock")
+def unlock_profile(req: SwitchProfileRequest):
+    settings = get_settings()
+    target = next((p for p in settings.get("profiles", []) if p["id"] == req.profile_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Profile not found")
+        
+    if target.get("password") and target["password"] != req.password:
+        return {"status": "error", "message": "Incorrect password"}
+        
+    target["is_locked"] = False
+    return {"status": "success", "profile": target}
 
 @router.get("/tv_state")
 def get_tv_state():
@@ -145,7 +200,6 @@ def switch_profile(req: SwitchProfileRequest):
         return {"status": "success", "message": f"Switched to {target['name']}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/upload_wallpaper")
 async def upload_wallpaper(request: Request):

@@ -137,61 +137,75 @@
                         </div>
                         
                         <!-- Switch Active Button (Cast) -->
-                        <button onclick="castActiveProfile()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition">
+                        <button id="btn-cast" onclick="castActiveProfile()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition">
                             <i class="fa-solid fa-tv"></i> Cast Profile to TV
                         </button>
 
                         <div class="h-px bg-slate-700 w-full my-4"></div>
 
-                        <!-- Profile Editing Fields -->
-                        <div>
-                            <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Name</label>
-                            <input type="text" id="prof-name" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
-                            
-                            <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Password (Optional)</label>
-                            <input type="text" id="prof-password" placeholder="Leave empty for no password" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
-
-                            <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Wallpaper (Overrides Default)</label>
-                            <input type="file" id="file-prof-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                            <input type="text" id="prof-wallpaper" placeholder="Or URL..." class="w-full p-3 mt-2 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
-                        </div>
-
-                        <!-- Default Built-in Apps Configuration -->
-                        <div class="mb-4">
-                            <label class="block text-slate-400 mb-2 text-sm font-medium">Default Built-in Apps</label>
-                            <div class="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
-                                <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
-                                    <input type="checkbox" id="prof-show-yt" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
-                                    <i class="fa-brands fa-youtube text-red-500"></i> YouTube
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
-                                    <input type="checkbox" id="prof-show-ml" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
-                                    <i class="fa-solid fa-desktop text-green-500"></i> Moonlight
-                                </label>
+                        <!-- Locked Profile Overlay -->
+                        <div id="locked-overlay" style="display:none;" class="text-center py-6">
+                            <div class="w-16 h-16 rounded-full bg-slate-800 mx-auto flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-lock text-2xl text-slate-400"></i>
                             </div>
-                        </div>
-
-                        <!-- Profile Custom Links -->
-                        <div class="mt-5">
-                            <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Browser Tabs</label>
-                            <div id="custom-links-container" class="space-y-3 mb-4">
-                                <!-- Links dynamically populated -->
-                            </div>
-                            
-                            <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
-                                <h4 class="text-sm font-semibold mb-3">Add Custom App</h4>
-                                <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
-                                <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
-                                <button onclick="addLink()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add</button>
-                            </div>
-                        </div>
-
-                        <!-- Delete Profile -->
-                        <div class="pt-4 mt-2">
-                            <button onclick="deleteEditingProfile()" class="w-full py-3 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-lg text-sm font-semibold transition">
-                                <i class="fa-solid fa-trash mr-1"></i> Delete This Profile
+                            <h3 class="text-lg font-bold mb-2">Profile is Protected</h3>
+                            <p class="text-sm text-slate-400 mb-6 px-4">The apps and settings for this profile are hidden.</p>
+                            <button onclick="unlockEditingProfile()" class="px-6 py-2 bg-slate-700 hover:bg-slate-600 font-semibold rounded-lg text-white">
+                                Enter Password to Edit
                             </button>
                         </div>
+
+                        <!-- Profile Editing Fields (Hidden if locked) -->
+                        <div id="profile-edit-fields">
+                            <div>
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Name</label>
+                                <input type="text" id="prof-name" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+                                
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Profile Password (Optional)</label>
+                                <input type="password" id="prof-password" placeholder="Leave empty for no password" class="w-full p-3 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Wallpaper (Overrides Default)</label>
+                                <input type="file" id="file-prof-wallpaper" accept="image/*,video/mp4,video/webm" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                                <input type="text" id="prof-wallpaper" placeholder="Or URL..." class="w-full p-3 mt-2 rounded-lg text-sm border border-slate-700 bg-slate-800 text-white mb-4">
+                            </div>
+
+                            <!-- Default Built-in Apps Configuration -->
+                            <div class="mb-4">
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Default Built-in Apps</label>
+                                <div class="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                    <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+                                        <input type="checkbox" id="prof-show-yt" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
+                                        <i class="fa-brands fa-youtube text-red-500"></i> YouTube
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+                                        <input type="checkbox" id="prof-show-ml" class="w-4 h-4 text-blue-600 rounded border-slate-600 focus:ring-blue-500">
+                                        <i class="fa-solid fa-desktop text-green-500"></i> Moonlight
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Profile Custom Links -->
+                            <div class="mt-5">
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Browser Tabs</label>
+                                <div id="custom-links-container" class="space-y-3 mb-4">
+                                    <!-- Links dynamically populated -->
+                                </div>
+                                
+                                <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                                    <h4 class="text-sm font-semibold mb-3">Add Custom App</h4>
+                                    <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
+                                    <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
+                                    <button onclick="addLink()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add</button>
+                                </div>
+                            </div>
+
+                            <!-- Delete Profile -->
+                            <div class="pt-4 mt-2">
+                                <button onclick="deleteEditingProfile()" class="w-full py-3 bg-red-900/30 text-red-400 border border-red-900/50 hover:bg-red-900/50 rounded-lg text-sm font-semibold transition">
+                                    <i class="fa-solid fa-trash mr-1"></i> Delete This Profile
+                                </button>
+                            </div>
+                        </div><!-- /profile-edit-fields -->
                     </div>
                 </div>
 
@@ -205,7 +219,6 @@
         </div>
     </div>
     
-    <!-- Notice the cache-busting v=3 ! -->
-    <script src="/static/js/remote.js?v=3"></script>
+    <script src="/static/js/remote.js?v=4"></script>
 </body>
 </html>

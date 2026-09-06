@@ -296,6 +296,8 @@ function populateProfileDropdown() {
         const opt = document.createElement('option');
         opt.value = p.id;
         let prefix = (p.id === fullSettings.active_profile_id) ? "📺 [ACTIVE] " : "";
+        if (p.password === '***LOCKED***' || p.is_locked) prefix += "🔒 ";
+        
         opt.textContent = prefix + p.name;
         sel.appendChild(opt);
     });
@@ -308,6 +310,15 @@ function renderEditingProfile() {
     const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
     if (!prof) return;
     
+    if (prof.password === '***LOCKED***' || prof.is_locked) {
+        document.getElementById('locked-overlay').style.display = 'block';
+        document.getElementById('profile-edit-fields').style.display = 'none';
+        return;
+    } else {
+        document.getElementById('locked-overlay').style.display = 'none';
+        document.getElementById('profile-edit-fields').style.display = 'block';
+    }
+    
     document.getElementById('prof-name').value = prof.name || '';
     document.getElementById('prof-password').value = prof.password || '';
     document.getElementById('prof-wallpaper').value = prof.wallpaper_url || '';
@@ -318,16 +329,57 @@ function renderEditingProfile() {
     renderLinks(prof.custom_links || []);
 }
 
+async function unlockEditingProfile() {
+    vibrate();
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (!prof) return;
+    
+    const pwd = prompt(`Enter password to unlock profile "${prof.name}":`);
+    if (pwd === null) return;
+    
+    try {
+        const res = await fetch('/api/profile/unlock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_id: prof.id, password: pwd })
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            const idx = fullSettings.profiles.findIndex(p => p.id === prof.id);
+            if (idx !== -1) {
+                fullSettings.profiles[idx] = data.profile;
+            }
+            populateProfileDropdown(); // updates icon
+            renderEditingProfile();
+        } else {
+            alert('Incorrect password!');
+        }
+    } catch(e) {
+        alert("Server error");
+    }
+}
+
 function switchEditingProfile() {
     const sel = document.getElementById('profile-selector');
     if (!sel.value) return;
-    saveCurrentProfileEditsToMemory(); 
+    
+    // Only save if it's currently unlocked
+    const oldProf = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (oldProf && oldProf.password !== '***LOCKED***' && !oldProf.is_locked) {
+        saveCurrentProfileEditsToMemory(); 
+    }
+    
     editingProfileId = sel.value;
     renderEditingProfile();
 }
 
 function addProfile() {
-    saveCurrentProfileEditsToMemory();
+    const oldProf = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (oldProf && oldProf.password !== '***LOCKED***' && !oldProf.is_locked) {
+        saveCurrentProfileEditsToMemory(); 
+    }
+    
     const id = 'prof_' + Date.now();
     fullSettings.profiles.push({
         id: id,
@@ -336,7 +388,8 @@ function addProfile() {
         wallpaper_url: '',
         show_youtube: true,
         show_moonlight: true,
-        custom_links: []
+        custom_links: [],
+        is_locked: false
     });
     populateProfileDropdown();
     editingProfileId = id;
@@ -406,7 +459,7 @@ function addLink() {
 function saveCurrentProfileEditsToMemory() {
     if (!editingProfileId || !fullSettings || !fullSettings.profiles) return;
     const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
-    if (prof) {
+    if (prof && prof.password !== '***LOCKED***' && !prof.is_locked) {
         prof.name = document.getElementById('prof-name').value;
         prof.password = document.getElementById('prof-password').value;
         prof.wallpaper_url = document.getElementById('prof-wallpaper').value;
@@ -417,13 +470,16 @@ function saveCurrentProfileEditsToMemory() {
 
 async function castActiveProfile() {
     vibrate();
-    saveCurrentProfileEditsToMemory(); 
     const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
     if (!prof) return;
     
+    if (prof.password !== '***LOCKED***' && !prof.is_locked) {
+        saveCurrentProfileEditsToMemory(); 
+    }
+    
     let enteredPassword = "";
-    if (prof.password) {
-        enteredPassword = prompt(`Profile ${prof.name} is password protected.\nEnter PIN/Password:`);
+    if (prof.is_locked || prof.password) {
+        enteredPassword = prompt(`Profile ${prof.name} is password protected.\nEnter PIN/Password to cast to TV:`);
         if (enteredPassword === null) return; 
     }
     
@@ -435,9 +491,9 @@ async function castActiveProfile() {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            alert(`Success: Switched TV to ${prof.name}! (Make sure to Save Changes if you edited apps)`);
             fullSettings.active_profile_id = prof.id;
             populateProfileDropdown();
+            alert(`Success: Switched TV to ${prof.name}!`);
         } else {
             alert(`Error: ${data.message}`);
         }
@@ -448,7 +504,7 @@ async function castActiveProfile() {
 
 async function uploadFile(fileInputId) {
     const fileInput = document.getElementById(fileInputId);
-    if (fileInput.files.length > 0) {
+    if (fileInput && fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const ext = file.name.split('.').pop() || 'tmp';
         const buffer = await file.arrayBuffer();
@@ -469,16 +525,21 @@ async function saveSettings(event) {
     btn.textContent = 'Saving...';
     
     try {
-        saveCurrentProfileEditsToMemory();
+        const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+        if (prof && prof.password !== '***LOCKED***' && !prof.is_locked) {
+            saveCurrentProfileEditsToMemory();
+        }
         
         try {
             const globalUrl = await uploadFile('file-default-wallpaper');
             if (globalUrl) document.getElementById('input-default-wallpaper').value = globalUrl;
             
-            const profUrl = await uploadFile('file-prof-wallpaper');
-            if (profUrl) {
-                document.getElementById('prof-wallpaper').value = profUrl;
-                saveCurrentProfileEditsToMemory(); 
+            if (prof && prof.password !== '***LOCKED***' && !prof.is_locked) {
+                const profUrl = await uploadFile('file-prof-wallpaper');
+                if (profUrl) {
+                    document.getElementById('prof-wallpaper').value = profUrl;
+                    saveCurrentProfileEditsToMemory(); 
+                }
             }
         } catch (e) {
             console.error('File upload error', e);
