@@ -48,8 +48,7 @@ async def go_home():
 @router.post("/input")
 async def remote_input(key_data: KeyModel):
     try:
-        # Non-blocking explicitly using Popen to prevent lag, avoiding asyncio.create_subprocess_exec compatibility issues
-        subprocess.Popen(["xdotool", "key", key_data.key], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["xdotool", "key", key_data.key], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -57,7 +56,7 @@ async def remote_input(key_data: KeyModel):
 @router.post("/type")
 async def remote_type(data: TextModel):
     try:
-        subprocess.Popen(["xdotool", "type", "--delay", "5", data.text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["xdotool", "type", "--delay", "5", data.text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -66,10 +65,10 @@ async def remote_type(data: TextModel):
 async def remote_mouse(mouse_data: MouseModel):
     try:
         if mouse_data.click:
-            subprocess.Popen(["xdotool", "click", "1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["xdotool", "click", "1"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             if mouse_data.dx != 0 or mouse_data.dy != 0:
-                subprocess.Popen(["xdotool", "mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["xdotool", "mousemove_relative", "--", str(int(mouse_data.dx)), str(int(mouse_data.dy))], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -86,10 +85,11 @@ async def control_volume(vol_data: VolumeModel):
         else:
             return {"status": "error", "message": "Unknown action"}
             
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 @router.get("/audio_outputs")
 async def get_audio_outputs():
@@ -97,7 +97,6 @@ async def get_audio_outputs():
         result = subprocess.run(["pactl", "list", "sinks"], capture_output=True, text=True)
         sinks = []
         
-        # Add the dynamic multi-output option at the top
         sinks.append({"id": "special_combine_audio", "name": "🎧 Play on ALL Headphones (Combine)"})
         
         current_name = None
@@ -107,7 +106,6 @@ async def get_audio_outputs():
                 current_name = line.replace("Name:", "").strip()
             elif line.startswith("Description:") and current_name:
                 desc = line.replace("Description:", "").strip()
-                # Hide the internal synthetic sink so the menu looks clean
                 if current_name != "combined_audio":
                     sinks.append({"id": current_name, "name": desc})
                 current_name = None
@@ -118,31 +116,29 @@ async def get_audio_outputs():
     except Exception:
         return {"status": "success", "outputs": [{"id": "dummy1", "name": "TV AudioOut (HDMI)"}]}
 
+
 @router.post("/audio_outputs")
 async def set_audio_output(sink_data: AudioSinkModel):
     try:
-        # First, unload any existing combine modules to prevent duplicates/errors
-        subprocess.run(["pactl", "unload-module", "module-combine-sink"], capture_output=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Note: Do not mix capture_output=True and DEVNULL. Removed DEVNULL here for safety.
+        subprocess.run(["pactl", "unload-module", "module-combine-sink"], capture_output=True)
         
         if sink_data.sink_name == "special_combine_audio":
-            # Load the combine module
             subprocess.run([
                 "pactl", "load-module", "module-combine-sink",
                 "sink_name=combined_audio",
                 "sink_properties=device.description=Combined_All_Headphones"
-            ], capture_output=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ], capture_output=True)
             
-            # Set the combined sink as default
-            subprocess.Popen(["pactl", "set-default-sink", "combined_audio"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["pactl", "set-default-sink", "combined_audio"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            # Standard single sink assignment
-            subprocess.Popen(["pactl", "set-default-sink", sink_data.sink_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["pactl", "set-default-sink", sink_data.sink_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
         return {"status": "success", "message": "Audio output changed"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Bluetooth Management (Using standard synchronous calls for max stability)
+
 @router.get("/bluetooth")
 async def list_bluetooth():
     try:
@@ -155,7 +151,6 @@ async def list_bluetooth():
                 if len(parts) == 3:
                     mac, name = parts[1], parts[2].strip()
                     
-                    # Fetch detailed info for connection status
                     info = subprocess.run(["bluetoothctl", "info", mac], capture_output=True, text=True)
                     connected = "Connected: yes" in info.stdout
                     
@@ -165,6 +160,7 @@ async def list_bluetooth():
     except Exception as e:
         return {"status": "error", "message": str(e)}
         
+
 @router.post("/bluetooth/connect")
 async def bt_connect(data: BluetoothMacModel):
     try:
