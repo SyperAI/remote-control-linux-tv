@@ -126,6 +126,21 @@ async function fetchConfig() {
             });
         }
         
+        // 4. Custom OS Apps
+        if (data.custom_apps && data.custom_apps.length > 0) {
+            data.custom_apps.forEach(app => {
+                const iconClass = app.icon || 'fa-solid fa-rocket';
+                grid.innerHTML += `
+                    <button onclick="launchApp('${app.id}')" class="nav-item app-card glass-panel glow-web h-64 p-8 flex flex-col justify-between text-left group">
+                        <div class="w-16 h-16 rounded-[1.2rem] bg-orange-500/20 text-orange-200 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(249,115,22,0.3)]"><i class="${iconClass} drop-shadow-md"></i></div>
+                        <div>
+                            <h3 class="text-3xl font-bold mb-3 truncate tracking-tight" title="${app.name}">${app.name}</h3>
+                            <div class="inline-block px-3 py-1 bg-white/10 rounded-lg text-white/70 text-xs font-semibold overflow-hidden text-ellipsis whitespace-nowrap max-w-full font-mono" title="${app.command}">${app.command}</div>
+                        </div>
+                    </button>`;
+            });
+        }
+        
         updateFocus();
     } catch (err) { }
 }

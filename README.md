@@ -1,28 +1,34 @@
-# Linux Smart TV Dashboard
+# Linux Smart TV Dashboard & Remote
 
-A lightweight, modern web-based dashboard designed to turn any Linux desktop/HTPC into a Smart TV. It provides a beautiful interface to launch your favorite apps directly on the host machine, and includes a **Mobile Remote Control** to navigate, control volume, and manage apps from your smartphone.
+A lightweight, modern web-based dashboard designed to turn any Linux desktop/HTPC into a Smart TV. It provides a beautiful, visually appealing interface to launch your favorite apps directly on the host machine, and includes a **Progressive Web App (PWA) Mobile Remote Control** to navigate, type, control volume, manage Bluetooth, and manage user profiles from your smartphone.
+
+> **💡 Fun Fact:** This entire project and its rich feature set were designed, written, and debugged with the assistance of **Antigravity** (an agentic AI system by Google DeepMind).
 
 ## Features
 
-- **Moonlight Game Streaming**: Seamlessly launch Moonlight (via Flatpak) to stream games from your main PC.
-- **YouTube TV**: Launches a kiosk-mode Firefox browser aimed at the leanback YouTube TV interface.
-- **Custom Web Apps**: Configure a custom URL (e.g., your favorite streaming service) right from the dashboard settings.
-- **Mobile Remote**: Access `/remote` via your smartphone's browser to get a D-Pad, Volume controls, Audio-output switcher, and "Home/Kill" buttons.
-- **FastAPI Backend**: A lightweight Python backend that handles local configuration and application process management.
+- **Progressive Web App (PWA) Remote**: Install the remote directly to your smart phone's home screen for a native app experience.
+- **D-Pad & Trackpad Modes**: Navigate the TV menu via D-Pad, or switch to laptop-style Trackpad mode for a virtual mouse and live text typing capabilities.
+- **User Profiles & Parental Controls**: Create multiple user profiles, each with its own custom wallpapers, app shortcuts, toggles, and optional password protection.
+- **Moonlight Game Streaming**: Seamlessly launch Moonlight (via Flatpak) to stream games from your main PC directly to the TV.
+- **YouTube TV & Custom Web Apps**: Launches isolated Kiosk-mode Chromium instances for YouTube TV and unlimited Custom Browser Apps (Netflix, Twitch, etc.).
+- **Advanced Audio & Bluetooth**: Scan, connect, and disconnect Bluetooth headphones directly from the remote. Includes a "Play on ALL Headphones" feature that combines audio sinks so multiple people can listen simultaneously.
+- **Native Gamepad Support**: Freely navigate the main Smart TV dashboard using a physical Xbox, PlayStation, or generic Bluetooth controller using the browser Gamepad API.
 
 ## Architecture
 
-1. **Frontend**: HTML / Tailwind CSS / Vanilla JS. Serves as the TV Dashboard and Mobile Remote.
-2. **Backend**: Python / FastAPI. Interacts with the Linux OS to execute/kill processes, swap volume, and emulate keystrokes.
+1. **Frontend**: HTML / Tailwind CSS / Vanilla JS. Provides the main Dashboard (`/`) and Mobile Remote (`/remote`).
+2. **Backend**: Python / FastAPI. Integrates seamlessly with the Linux OS to execute/kill graphical processes securely, manage DBus sessions, swap volume outputs, handle bluetooth devices, and emulate virtual keystrokes.
 
 ## Prerequisites
 
-- Python 3.10+
-- `uv` (Fast Python package installer and resolver)
-- `firefox` (for web apps)
-- `flatpak` and `com.moonlight_stream.Moonlight` (for game streaming)
-- `xdotool` (Required for D-Pad cursor navigation and minimizing windows on X11)
-- `pulseaudio` or `pipewire-pulse` (Requires `pactl` command for volume/audio routing)
+- **OS**: Linux (Specifically configured for **X11** sessions. Wayland imposes hardware restrictions on virtual inputs like `xdotool`).
+- **Python**: 3.10+ and `uv` (Fast Python package installer).
+- **Browser**: `chromium` (for launching sandboxed web apps).
+- **Streaming**: `flatpak` and `com.moonlight_stream.Moonlight`.
+- **System Tools**: 
+  - `xdotool` (Required for Trackpad/D-Pad virtual inputs and minimizing windows).
+  - `pulseaudio` or `pipewire-pulse` (Requires the `pactl` module for volume and audio routing).
+  - `bluetoothctl` (For managing Bluetooth pairings).
 
 ## Installation & Setup
 
@@ -32,7 +38,7 @@ A lightweight, modern web-based dashboard designed to turn any Linux desktop/HTP
    cd remote-control
    ```
 
-2. Install dependencies using `uv`:
+2. Install backend dependencies using `uv`:
    ```bash
    uv sync
    ```
@@ -41,13 +47,11 @@ A lightweight, modern web-based dashboard designed to turn any Linux desktop/HTP
    ```bash
    uv run backend/main.py
    ```
+   *(Note: For full DBUS and Audio routing on autostart, it is highly recommended to run this via a `systemd` `--user` service)*
 
-4. **TV Screen:** Open your browser in kiosk mode pointing to `http://localhost:8000`.
-5. **Mobile Remote:** Open your smartphone browser to `http://<YOUR_LINUX_IP>:8000/remote`.
+4. **TV Screen:** Open your browser in fullscreen/kiosk mode pointing to `http://localhost:8000`.
+5. **Mobile Remote:** Open your smartphone browser to `http://<YOUR_LINUX_IP>:8000/remote` and press "Add to Home Screen" to install the PWA.
 
 ## Configuration
 
-Settings can be changed dynamically by clicking the **Gear Icon** in the top right corner of the TV dashboard.
-You can specify:
-- Your internal PC's IP address (for Moonlight/Sunshine pairing).
-- The arbitrary website URL to launch in the custom app slot.
+All configuration is managed dynamically and visually through the **Settings & Profiles** menu (the Gear Icon tab) directly on the mobile app. Profile customizations, host IPs, and environment layouts are automatically saved securely in a local `settings.json` file.

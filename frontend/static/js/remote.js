@@ -327,6 +327,7 @@ function renderEditingProfile() {
     document.getElementById('prof-show-ml').checked = (prof.show_moonlight !== false);
     
     renderLinks(prof.custom_links || []);
+    renderCustomApps(prof.custom_apps || []);
 }
 
 async function unlockEditingProfile() {
@@ -389,6 +390,7 @@ function addProfile() {
         show_youtube: true,
         show_moonlight: true,
         custom_links: [],
+        custom_apps: [],
         is_locked: false
     });
     populateProfileDropdown();
@@ -414,7 +416,7 @@ function renderLinks(links) {
     c.innerHTML = '';
     
     if (links.length === 0) {
-        c.innerHTML = '<div class="text-xs text-slate-500 italic pb-2">No apps added for this profile.</div>';
+        c.innerHTML = '<div class="text-xs text-slate-500 italic pb-2">No browser apps added for this profile.</div>';
     }
     
     links.forEach(link => {
@@ -455,6 +457,54 @@ function addLink() {
     nameNode.value = ''; urlNode.value = '';
     renderLinks(prof.custom_links);
 }
+
+// ==== CUSTOM SYSTEM APPS ====
+function renderCustomApps(apps) {
+    const c = document.getElementById('custom-apps-container');
+    c.innerHTML = '';
+    
+    if (apps.length === 0) {
+        c.innerHTML = '<div class="text-xs text-slate-500 italic pb-2">No OS apps added for this profile.</div>';
+    }
+    
+    apps.forEach(app => {
+        c.innerHTML += `
+            <div class="flex items-center justify-between bg-[#0f172a] p-3 rounded-xl border border-slate-700 shadow-inner">
+                <div class="flex-1 overflow-hidden">
+                    <div class="font-bold text-sm truncate text-white">${app.name}</div>
+                    <div class="text-[10px] text-slate-400 truncate font-mono">${app.command}</div>
+                </div>
+                <button onclick="removeCustomApp('${app.id}')" class="text-red-400 p-2 ml-2 hover:bg-red-500/20 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+    });
+}
+
+function removeCustomApp(id) {
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if(prof) {
+        prof.custom_apps = prof.custom_apps.filter(a => a.id !== id);
+        renderCustomApps(prof.custom_apps);
+    }
+}
+
+function addCustomApp() {
+    const prof = fullSettings.profiles.find(p => p.id === editingProfileId);
+    if (!prof) return;
+    
+    const nameNode = document.getElementById('new-app-name');
+    const cmdNode = document.getElementById('new-app-cmd');
+    const name = nameNode.value.trim();
+    const command = cmdNode.value.trim();
+    
+    if(!name || !command) { alert("Please set a name and a system command!"); return; }
+    
+    if (!prof.custom_apps) prof.custom_apps = [];
+    prof.custom_apps.push({ id: 'app_' + Date.now(), name, command, icon: "fa-solid fa-rocket" });
+    nameNode.value = ''; cmdNode.value = '';
+    renderCustomApps(prof.custom_apps);
+}
+
 
 function saveCurrentProfileEditsToMemory() {
     if (!editingProfileId || !fullSettings || !fullSettings.profiles) return;

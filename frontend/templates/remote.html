@@ -204,10 +204,25 @@
                                 </div>
                                 
                                 <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
-                                    <h4 class="text-sm font-semibold mb-3">Add Custom App</h4>
+                                    <h4 class="text-sm font-semibold mb-3">Add Browser Tab</h4>
                                     <input type="text" id="new-link-name" placeholder="Name (e.g., Netflix)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
                                     <input type="text" id="new-link-url" placeholder="https://..." class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none">
-                                    <button onclick="addLink()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add</button>
+                                    <button onclick="addLink()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add Web App</button>
+                                </div>
+                            </div>
+
+                            <!-- Profile Custom OS Apps -->
+                            <div class="mt-5 border-t border-slate-700 pt-5">
+                                <label class="block text-slate-400 mb-2 text-sm font-medium">Custom Systems Apps & Commands</label>
+                                <div id="custom-apps-container" class="space-y-3 mb-4">
+                                    <!-- Apps dynamically populated -->
+                                </div>
+                                
+                                <div class="p-4 border border-dashed border-slate-600 rounded-xl bg-[rgba(255,255,255,0.02)]">
+                                    <h4 class="text-sm font-semibold mb-3">Add Custom OS App</h4>
+                                    <input type="text" id="new-app-name" placeholder="Name (e.g., RetroArch)" class="w-full p-3 rounded-lg mb-2 text-sm bg-slate-800 text-white border-none">
+                                    <input type="text" id="new-app-cmd" placeholder="Command (e.g., flatpak run ...)" class="w-full p-3 rounded-lg mb-3 text-sm bg-slate-800 text-white border-none font-mono">
+                                    <button onclick="addCustomApp()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-sm transition">Add Program</button>
                                 </div>
                             </div>
 
@@ -231,7 +246,7 @@
         </div>
     </div>
     
-    <script src="/static/js/remote.js?v=6"></script>
+    <script src="/static/js/remote.js?v=7"></script>
     <script>
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {

@@ -3,6 +3,7 @@ import json
 import subprocess
 import asyncio
 import time
+import shlex
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -21,6 +22,12 @@ class CustomLink(BaseModel):
     name: str
     url: str
 
+class CustomApp(BaseModel):
+    id: str
+    name: str
+    command: str
+    icon: str = "fa-solid fa-rocket"
+
 class ProfileModel(BaseModel):
     id: str
     name: str
@@ -28,7 +35,8 @@ class ProfileModel(BaseModel):
     password: str = ""
     show_youtube: bool = True
     show_moonlight: bool = True
-    custom_links: List[CustomLink]
+    custom_links: List[CustomLink] = []
+    custom_apps: List[CustomApp] = []
     is_locked: Optional[bool] = False
 
 class SettingsModel(BaseModel):
@@ -55,7 +63,8 @@ def get_settings():
                 "password": "",
                 "show_youtube": True,
                 "show_moonlight": True,
-                "custom_links": [{"id": "link_google", "name": "Google", "url": "https://google.com"}]
+                "custom_links": [{"id": "link_google", "name": "Google", "url": "https://google.com"}],
+                "custom_apps": []
             }
         ]
     }
@@ -78,7 +87,8 @@ def get_settings():
                                 "password": "",
                                 "show_youtube": True,
                                 "show_moonlight": True,
-                                "custom_links": data.get("custom_links", [])
+                                "custom_links": data.get("custom_links", []),
+                                "custom_apps": []
                             }
                         ]
                     }
@@ -97,6 +107,7 @@ def read_settings():
             p["is_locked"] = True
             p["password"] = "***LOCKED***"
             p["custom_links"] = []
+            p["custom_apps"] = []
             p["wallpaper_url"] = ""
             p["show_youtube"] = False
             p["show_moonlight"] = False
@@ -119,6 +130,7 @@ def write_settings(settings: SettingsModel):
                     real = existing_profiles_map[p["id"]]
                     p["password"] = real.get("password", "")
                     p["custom_links"] = real.get("custom_links", [])
+                    p["custom_apps"] = real.get("custom_apps", [])
                     p["wallpaper_url"] = real.get("wallpaper_url", "")
                     p["show_youtube"] = real.get("show_youtube", True)
                     p["show_moonlight"] = real.get("show_moonlight", True)
@@ -168,7 +180,7 @@ def get_tv_state():
     if not active_profile and len(profiles) > 0:
         active_profile = profiles[0]
     elif not active_profile:
-        active_profile = {"name": "No Profile", "custom_links": [], "wallpaper_url": ""}
+        active_profile = {"name": "No Profile", "custom_links": [], "custom_apps": [], "wallpaper_url": ""}
 
     wallpaper = active_profile.get("wallpaper_url") or settings.get("default_wallpaper", "")
     
@@ -176,6 +188,7 @@ def get_tv_state():
         "moonlight_host": settings.get("moonlight_host", "192.168.1.10"),
         "wallpaper_url": wallpaper,
         "custom_links": active_profile.get("custom_links", []),
+        "custom_apps": active_profile.get("custom_apps", []),
         "profile_name": active_profile.get("name", "Unknown"),
         "show_youtube": active_profile.get("show_youtube", True),
         "show_moonlight": active_profile.get("show_moonlight", True)
@@ -236,8 +249,6 @@ async def launch_app(app_id: str):
         },
         "moonlight": {
             "name": "Moonlight",
-            # Launch standard GUI. The user can navigate via D-Pad or Mouse.
-            # Passing 'stream' argument requires an explicit App Name component which causes it to crash if omitted.
             "command": ["flatpak", "run", "com.moonlight_stream.Moonlight"]
         }
     }
@@ -246,6 +257,17 @@ async def launch_app(app_id: str):
         APPS_CONFIG[link["id"]] = {
             "name": link["name"],
             "command": ["chromium", f"--user-data-dir=/tmp/tv_{link['id']}", "--no-first-run", "--kiosk", link["url"]]
+        }
+        
+    for app in active_profile.get("custom_apps", []):
+        try:
+            cmd_list = shlex.split(app["command"])
+        except ValueError:
+            cmd_list = [app["command"]]
+            
+        APPS_CONFIG[app["id"]] = {
+            "name": app["name"],
+            "command": cmd_list
         }
 
     if app_id not in APPS_CONFIG:
