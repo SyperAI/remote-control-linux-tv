@@ -184,6 +184,8 @@ def get_tv_state():
 
     wallpaper = active_profile.get("wallpaper_url") or settings.get("default_wallpaper", "")
     
+    is_app_running = any(p.poll() is None for p in active_processes.values())
+    
     return {
         "moonlight_host": settings.get("moonlight_host", "192.168.1.10"),
         "wallpaper_url": wallpaper,
@@ -191,7 +193,8 @@ def get_tv_state():
         "custom_apps": active_profile.get("custom_apps", []),
         "profile_name": active_profile.get("name", "Unknown"),
         "show_youtube": active_profile.get("show_youtube", True),
-        "show_moonlight": active_profile.get("show_moonlight", True)
+        "show_moonlight": active_profile.get("show_moonlight", True),
+        "is_app_running": is_app_running
     }
 
 @router.post("/switch_profile")

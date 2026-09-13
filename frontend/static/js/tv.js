@@ -56,6 +56,7 @@ function showToast(msg) {
 let currentIndex = 0;
 let lastConfigRaw = "";
 let currentWallpaperUrl = "";
+let isAppRunning = false;
 
 function applyWallpaper(url) {
     if (url === currentWallpaperUrl) return;
@@ -82,9 +83,13 @@ async function fetchConfig() {
         const res = await fetch('/api/tv_state');
         const text = await res.text();
         
+        const data = JSON.parse(text);
+        
+        // Update the running state directly always
+        isAppRunning = data.is_app_running === true;
+        
         if (text === lastConfigRaw) return;
         lastConfigRaw = text;
-        const data = JSON.parse(text);
         
         applyWallpaper(data.wallpaper_url);
         
@@ -154,6 +159,9 @@ async function launchApp(appId) {
         if (data.warning) showToast(data.warning);
         else if (data.status === 'success') showToast(data.message || `Launched`);
         else showToast(`Error: ${data.detail}`);
+        
+        // Force an immediate fetch to lock the gamepad
+        fetchConfig();
     } catch (err) {
         showToast(`Network failure or backend unresponsive.`);
     }
@@ -180,6 +188,14 @@ function updateFocus() {
 let gamepadState = {}; 
 
 function pollGamepads() {
+    // SECURITY/USABILITY CHECK: 
+    // Do not process gamepad input if we are not the active OS window 
+    // (e.g. Moonlight is open on top) or if the backend reports an app is running.
+    if (!document.hasFocus() || isAppRunning) {
+        requestAnimationFrame(pollGamepads);
+        return;
+    }
+
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     
     for (let i = 0; i < gamepads.length; i++) {
@@ -261,6 +277,9 @@ document.addEventListener("DOMContentLoaded", () => {
     initBattery();
     
     window.addEventListener('keydown', (e) => {
+        // Obey same safety lock for keyboard if an app is running
+        if (isAppRunning) return;
+
         const navItems = document.querySelectorAll('.nav-item');
         if (navItems.length === 0) return;
 
