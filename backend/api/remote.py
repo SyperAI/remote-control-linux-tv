@@ -1,6 +1,7 @@
 import os
 import subprocess
 import logging
+import time
 from fastapi import APIRouter
 from pydantic import BaseModel
 from .core import kill_app, active_processes
@@ -124,6 +125,33 @@ def move_all_sink_inputs_to(target_sink):
                     run_pactl(["move-sink-input", input_id, target_sink])
     except Exception as e:
         logger.error(f"Error moving sink inputs: {e}")
+
+def set_card_profile_a2dp(mac: str):
+    """Enforce A2DP (stereo sink) profile for Bluetooth device to avoid single-SCO channel hardware drops"""
+    card_name = f"bluez_card.{mac.replace(':', '_')}"
+    for prof in ["a2dp_sink", "a2dp-sink", "a2dp_sink_sbc", "a2dp_sink_aac"]:
+        res = run_pactl(["set-card-profile", card_name, prof])
+        if res.returncode == 0:
+            logger.info(f"Successfully set {card_name} profile to {prof}")
+            break
+
+def sync_combine_sink_if_active():
+    """If combined_audio is currently default or active, re-sync with all currently connected Bluetooth sinks"""
+    default_sink = get_default_sink()
+    if default_sink == "combined_audio":
+        bt_sinks = get_bluetooth_sinks()
+        unload_combine_sink()
+        if bt_sinks:
+            slaves_arg = f"slaves={','.join(bt_sinks)}"
+            logger.info(f"Re-syncing combined_audio with slaves: {slaves_arg}")
+            run_pactl([
+                "load-module", "module-combine-sink",
+                "sink_name=combined_audio",
+                slaves_arg,
+                "sink_properties=device.description=Combined_Bluetooth_Headphones"
+            ])
+            run_pactl(["set-default-sink", "combined_audio"])
+            move_all_sink_inputs_to("combined_audio")
 
 @router.post("/kill_active")
 async def kill_active():
@@ -283,15 +311,22 @@ async def list_bluetooth():
 @router.post("/bluetooth/connect")
 async def bt_connect(data: BluetoothMacModel):
     try:
-        subprocess.run(["bluetoothctl", "connect", data.mac])
-        return {"status": "success"}
+        res = subprocess.run(["bluetoothctl", "connect", data.mac], capture_output=True, text=True, timeout=15)
+        time.sleep(1.0)
+        set_card_profile_a2dp(data.mac)
+        sync_combine_sink_if_active()
+        return {"status": "success", "message": res.stdout.strip()}
     except Exception as e:
+        logger.error(f"Error connecting Bluetooth {data.mac}: {e}")
         return {"status": "error", "message": str(e)}
 
 @router.post("/bluetooth/disconnect")
 async def bt_disconnect(data: BluetoothMacModel):
     try:
-        subprocess.run(["bluetoothctl", "disconnect", data.mac])
+        res = subprocess.run(["bluetoothctl", "disconnect", data.mac], capture_output=True, text=True, timeout=10)
+        time.sleep(0.5)
+        sync_combine_sink_if_active()
         return {"status": "success"}
     except Exception as e:
+        logger.error(f"Error disconnecting Bluetooth {data.mac}: {e}")
         return {"status": "error", "message": str(e)}
