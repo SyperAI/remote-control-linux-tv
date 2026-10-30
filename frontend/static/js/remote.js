@@ -631,10 +631,28 @@ async function loadAudioOutputs() {
             opt.textContent = device.name;
             select.appendChild(opt);
         });
+        if (data.current) {
+            select.value = data.current;
+        }
     } catch(e) {}
 }
 
 async function setAudioOutput(sink_name) {
     vibrate();
-    fetch('/api/remote/audio_outputs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sink_name }) });
+    try {
+        const res = await fetch('/api/remote/audio_outputs', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ sink_name }) 
+        });
+        const data = await res.json();
+        if (data.status === 'error') {
+            alert(data.message || 'Error changing audio output');
+            loadAudioOutputs();
+        } else if (data.message) {
+            loadAudioOutputs();
+        }
+    } catch(e) {
+        console.error(e);
+    }
 }
